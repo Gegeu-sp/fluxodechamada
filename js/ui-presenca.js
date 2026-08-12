@@ -1,13 +1,14 @@
 import { $, toast, countUp, initials, todayStr } from './utils.js';
-import { MODS, MOD_KEYS, AV_COLORS } from './constants.js';
-import { getAulasDoDia, savePresenca } from './data.js';
+import { MODS, MOD_KEYS, WEEKDAYS_PT, AV_COLORS, CHECKIN_STATUS } from './constants.js';
+import { getAulasDoDia, getAulasDaSemana, savePresenca, listSetores, isAtendido } from './data.js';
 import { auth } from './firebase-config.js';
 
-const state = { date: todayStr(), modality: 'all', sector: 'all' };
+const state = { date: todayStr(), modality: 'all', sector: 'all', view: 'dia' };
 let currentClasses = [];
+let currentWeekItems = new Map(); // key: `${turmaId}_${date}` -> aula
 let activeClass = null;
 
-const presentOf = c => c.students.reduce((a, s) => a + (s.present ? 1 : 0), 0);
+const presentOf = c => c.students.reduce((a, s) => a + (isAtendido(s.status) ? 1 : 0), 0);
 
 export async function initPresenca() {
   $('fDate').value = state.date;
@@ -19,10 +20,16 @@ export async function initPresenca() {
   $('fMod').addEventListener('change', e => { state.modality = e.target.value; renderDashboard(); });
 
   wireChips('fSector', v => { state.sector = v; renderDashboard(); });
+  wireChips('fView', v => { state.view = v; renderDashboard(); });
 
   $('classList').addEventListener('click', e => {
     const card = e.target.closest('.class-card'); if (!card) return;
     const c = currentClasses.find(x => x.id === card.dataset.id);
+    if (c) openModal(c);
+  });
+  $('weekView').addEventListener('click', e => {
+    const item = e.target.closest('.semana-item'); if (!item) return;
+    const c = currentWeekItems.get(item.dataset.key);
     if (c) openModal(c);
   });
 
@@ -32,23 +39,24 @@ export async function initPresenca() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('modal').classList.contains('show')) closeModal(); });
 
   $('mList').addEventListener('click', async e => {
-    const row = e.target.closest('.s-row'); if (!row || !activeClass) return;
+    const btn = e.target.closest('.checkin-chips .chip[data-status]'); if (!btn || !activeClass) return;
+    const row = btn.closest('.s-row'); if (!row) return;
     const s = activeClass.students.find(x => x.id === row.dataset.id); if (!s) return;
-    s.present = !s.present;
-    row.classList.toggle('present', s.present);
+    s.status = btn.dataset.status;
+    row.querySelectorAll('.checkin-chips .chip').forEach(c => c.classList.toggle('active', c === btn));
     updateModalCounter();
     await persistActiveClass();
   });
   $('mSearch').addEventListener('input', renderStudents);
-  $('btnAll').addEventListener('click', async () => {
+  $('btnAllFez').addEventListener('click', async () => {
     if (!activeClass) return;
-    activeClass.students.forEach(s => s.present = true);
+    activeClass.students.forEach(s => s.status = 'foi_fez');
     renderStudents();
     await persistActiveClass();
   });
-  $('btnNone').addEventListener('click', async () => {
+  $('btnAllFaltou').addEventListener('click', async () => {
     if (!activeClass) return;
-    activeClass.students.forEach(s => s.present = false);
+    activeClass.students.forEach(s => s.status = 'faltou');
     renderStudents();
     await persistActiveClass();
   });
@@ -60,9 +68,9 @@ export async function initPresenca() {
 async function persistActiveClass() {
   if (!activeClass) return;
   const uid = auth.currentUser ? auth.currentUser.uid : null;
-  const presentIds = activeClass.students.filter(s => s.present).map(s => s.id);
+  const checkin = Object.fromEntries(activeClass.students.map(s => [s.id, s.status]));
   try {
-    await savePresenca(activeClass.turmaId, activeClass.date, presentIds, uid);
+    await savePresenca(activeClass.turmaId, activeClass.date, checkin, uid);
   } catch (e) {
     toast('Não foi possível salvar — verifique a conexão');
   }
@@ -76,15 +84,25 @@ function wireChips(containerId, cb) {
   });
 }
 
-function filteredClasses() {
-  return currentClasses.filter(c =>
-    (state.modality === 'all' || c.mod === state.modality) &&
-    (state.sector === 'all' || c.sector === state.sector));
+async function renderSectorChips() {
+  const setores = await listSetores();
+  const options = [{ id: 'all', nome: 'Todos os setores' }, ...setores.filter(s => s.ativo !== false)];
+  $('fSector').innerHTML = options.map(o =>
+    `<button class="chip ${o.id === state.sector ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
 }
 
+function matchesFilters(c) {
+  return (state.modality === 'all' || c.mod === state.modality) &&
+    (state.sector === 'all' || c.sector === state.sector);
+}
+function filteredClasses() { return currentClasses.filter(matchesFilters); }
+
 export async function renderDashboard() {
+  await renderSectorChips();
   currentClasses = await getAulasDoDia(state.date);
   const list = filteredClasses();
+
+  // Os cartões de estatística sempre refletem só o dia selecionado, mesmo na visão Semana.
   const present = list.reduce((a, c) => a + presentOf(c), 0);
   const capacity = list.reduce((a, c) => a + c.capacity, 0);
   const occ = capacity ? present / capacity : 0;
@@ -93,6 +111,17 @@ export async function renderDashboard() {
   countUp($('stOcup'), occ * 100, { suffix: '%' });
   countUp($('stAulas'), list.length);
 
+  $('classList').style.display = state.view === 'dia' ? '' : 'none';
+  $('weekView').style.display = state.view === 'semana' ? '' : 'none';
+
+  if (state.view === 'dia') {
+    renderDayGrid(list);
+  } else {
+    await renderWeekGrid();
+  }
+}
+
+function renderDayGrid(list) {
   const wrap = $('classList');
   if (!list.length) {
     wrap.innerHTML = `<div class="empty"><div class="big">🗓️</div><h3>Nenhuma aula encontrada</h3>
@@ -109,7 +138,7 @@ export async function renderDashboard() {
     return `<article class="class-card" data-id="${c.id}" style="animation-delay:${i * 50}ms">
       <div class="cc-top">
         <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
-        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${c.sector} · ${c.capacity} vagas</p></div>
+        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${c.sectorName} · ${c.capacity} vagas</p></div>
         <span class="time-chip">${c.time}</span>
       </div>
       <div class="cc-count"><b>${p}</b><span>/ ${c.capacity} presentes</span></div>
@@ -122,10 +151,31 @@ export async function renderDashboard() {
   }).join('');
 }
 
+async function renderWeekGrid() {
+  const weekData = await getAulasDaSemana(state.date);
+  currentWeekItems = new Map();
+  const hoje = todayStr();
+  $('weekView').innerHTML = weekData.map(day => {
+    const aulas = day.aulas.filter(matchesFilters);
+    aulas.forEach(a => currentWeekItems.set(`${a.id}_${a.date}`, a));
+    const dnum = parseInt(day.date.slice(8), 10);
+    const items = aulas.length ? aulas.map(a => {
+      const m = MODS[a.mod] || { name: a.mod, emoji: '❓' };
+      return `<div class="semana-item" data-key="${a.id}_${a.date}">
+        <div class="si-top"><span>${m.emoji}</span><span>${a.time}</span></div>
+        <div class="si-mod">${m.name} · ${a.sectorName}</div>
+      </div>`;
+    }).join('') : `<div class="semana-empty">Sem aulas</div>`;
+    return `<div class="semana-col">
+      <div class="semana-col-head ${day.date === hoje ? 'today' : ''}">${WEEKDAYS_PT[day.dow]} ${dnum}</div>
+      ${items}
+    </div>`;
+  }).join('');
+}
+
 function clearFilters() {
   state.modality = 'all'; state.sector = 'all';
   $('fMod').value = 'all';
-  document.querySelectorAll('#fSector .chip').forEach(b => b.classList.toggle('active', b.dataset.v === 'all'));
   renderDashboard();
 }
 
@@ -134,7 +184,7 @@ function openModal(c) {
   const m = MODS[c.mod] || { name: c.mod, emoji: '❓', soft: '#eee' };
   $('mBadge').textContent = m.emoji; $('mBadge').style.background = m.soft;
   $('mTitle').textContent = m.name;
-  $('mSub').textContent = `${c.time} · Setor ${c.sector} · ${c.capacity} vagas`;
+  $('mSub').textContent = `${c.time} · Setor ${c.sectorName} · ${c.capacity} vagas`;
   $('mSearch').value = '';
   $('mPresent').dataset.v = '0';
   renderStudents();
@@ -158,9 +208,12 @@ function renderStudents() {
   const rows = activeClass.students.filter(s => !q || s.name.toLowerCase().includes(q));
   $('mList').innerHTML = rows.length ? rows.map(s => {
     const col = AV_COLORS[Math.abs(hashCode(s.id)) % AV_COLORS.length];
-    return `<li class="s-row ${s.present ? 'present' : ''}" data-id="${s.id}">
+    const chips = CHECKIN_STATUS.map(cs =>
+      `<button type="button" class="chip ${s.status === cs.value ? 'active' : ''}" data-status="${cs.value}">${cs.label}</button>`).join('');
+    return `<li class="s-row" data-id="${s.id}">
       <span class="s-ava" style="background:${col}22;color:${col}">${initials(s.name)}</span>
-      <span class="s-name">${s.name}</span><span class="switch"></span></li>`;
+      <span class="s-name">${s.name}</span>
+      <div class="chips checkin-chips">${chips}</div></li>`;
   }).join('') : `<div class="no-results">Nenhum aluno encontrado 🔍</div>`;
   updateModalCounter();
 }

@@ -16,6 +16,15 @@ service cloud.firestore {
       allow delete: if signedIn();
     }
 
+    match /setores/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.ativo is bool;
+      allow delete: if signedIn();
+    }
+
     match /turmas/{id} {
       allow read: if signedIn();
       allow create, update: if signedIn()
@@ -34,7 +43,7 @@ service cloud.firestore {
       allow create, update: if signedIn()
         && request.resource.data.turmaId is string
         && request.resource.data.data is string
-        && request.resource.data.presentes is list;
+        && request.resource.data.checkin is map;
       allow delete: if signedIn();
     }
 

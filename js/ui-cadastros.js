@@ -1,14 +1,16 @@
 import { $, initials, toast } from './utils.js';
 import { MODS, MOD_KEYS, AV_COLORS, WEEKDAYS_PT } from './constants.js';
 import {
-  listAlunos, listTurmas, createAluno, updateAluno,
-  createTurma, updateTurma, matricular,
+  listAlunos, listTurmas, listSetores, createAluno, updateAluno,
+  createTurma, updateTurma, matricular, createSetor, updateSetor,
 } from './data.js';
 
 let alunosCache = [];
 let turmasCache = [];
+let setoresCache = [];
 let editingAlunoId = null;
 let editingTurmaId = null;
+let editingSetorId = null;
 let turmaDiasSelecionados = new Set();
 let matriculaTurma = null;
 let matriculaSelecionados = new Set();
@@ -17,24 +19,30 @@ export async function initCadastros() {
   wireSubTabs();
   wireAlunoModal();
   wireTurmaModal();
+  wireSetorModal();
   wireMatriculaModal();
   $('alunoSearch').addEventListener('input', () => renderAlunosList());
+  $('setorSearch').addEventListener('input', () => renderSetoresList());
   await refreshCadastros();
 }
 
 export async function refreshCadastros() {
-  [alunosCache, turmasCache] = await Promise.all([listAlunos(true), listTurmas(true)]);
+  [alunosCache, turmasCache, setoresCache] = await Promise.all([listAlunos(true), listTurmas(true), listSetores(true)]);
   renderAlunosList();
   renderTurmasList();
+  renderSetoresList();
+  populateTurmaSetorSelect();
 }
 
+function setorNome(id) { return (setoresCache.find(s => s.id === id) || {}).nome || id; }
+
 function wireSubTabs() {
+  const panels = { alunos: 'cad-alunos', turmas: 'cad-turmas', setores: 'cad-setores' };
   document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
       const sub = btn.dataset.subtab;
-      $('cad-alunos').style.display = sub === 'alunos' ? '' : 'none';
-      $('cad-turmas').style.display = sub === 'turmas' ? '' : 'none';
+      Object.entries(panels).forEach(([key, id]) => { $(id).style.display = key === sub ? '' : 'none'; });
     });
   });
 }
@@ -107,7 +115,7 @@ function renderTurmasList() {
     return `<article class="card class-card" data-id="${t.id}">
       <div class="cc-top">
         <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
-        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${t.setor} · ${t.capacidade} vagas · ${(t.alunoIds || []).length} matriculados</p></div>
+        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${setorNome(t.setor)} · ${t.capacidade} vagas · ${(t.alunoIds || []).length} matriculados</p></div>
         <span class="time-chip">${t.horario}</span>
       </div>
       <div class="dias-row">${diasChips}</div>
@@ -127,6 +135,19 @@ function renderTurmasList() {
   wrap.querySelectorAll('[data-matricular]').forEach(btn => {
     btn.addEventListener('click', () => openMatriculaModal(turmasCache.find(t => t.id === btn.dataset.matricular)));
   });
+}
+
+function populateTurmaSetorSelect(manterId) {
+  const sel = $('turmaSetor');
+  const ativos = setoresCache.filter(s => s.ativo !== false);
+  sel.innerHTML = ativos.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+  // Se a turma em edição usa um setor desativado/removido da lista, mantém a opção pra não perder a seleção.
+  if (manterId && !ativos.some(s => s.id === manterId)) {
+    const opt = document.createElement('option');
+    opt.value = manterId; opt.textContent = setorNome(manterId);
+    sel.appendChild(opt);
+  }
+  if (manterId) sel.value = manterId;
 }
 
 function wireTurmaModal() {
@@ -170,7 +191,7 @@ function openTurmaModal(turma) {
   $('turmaModalTitle').textContent = turma ? 'Editar turma' : 'Nova turma';
   $('turmaModalidade').value = turma ? turma.modalidade : MOD_KEYS[0];
   $('turmaHorario').value = turma ? turma.horario : '08:00';
-  $('turmaSetor').value = turma ? turma.setor : 'A';
+  populateTurmaSetorSelect(turma ? turma.setor : null);
   $('turmaCapacidade').value = turma ? turma.capacidade : 20;
   turmaDiasSelecionados = new Set(turma ? (turma.diasSemana || []) : []);
   $('turmaDias').querySelectorAll('button[data-dia]').forEach(b => b.classList.toggle('on', turmaDiasSelecionados.has(Number(b.dataset.dia))));
@@ -203,7 +224,7 @@ function wireMatriculaModal() {
 function openMatriculaModal(turma) {
   matriculaTurma = turma;
   matriculaSelecionados = new Set(turma.alunoIds || []);
-  $('matriculaSub').textContent = `${MODS[turma.modalidade]?.name || turma.modalidade} ${turma.horario} · Setor ${turma.setor}`;
+  $('matriculaSub').textContent = `${MODS[turma.modalidade]?.name || turma.modalidade} ${turma.horario} · Setor ${setorNome(turma.setor)}`;
   $('matriculaSearch').value = '';
   renderMatriculaList();
   $('modalMatricula').classList.add('show');
@@ -223,3 +244,54 @@ function renderMatriculaList() {
       <span class="s-name">${a.nome}</span><span class="switch"></span></li>`;
   }).join('') : `<div class="no-results">Nenhum aluno encontrado 🔍</div>`;
 }
+
+// ================== SETORES ==================
+function renderSetoresList() {
+  const q = ($('setorSearch').value || '').toLowerCase().trim();
+  const rows = setoresCache
+    .filter(s => !q || s.nome.toLowerCase().includes(q))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  $('setoresList').innerHTML = rows.length ? rows.map(s => {
+    return `<div class="aluno-row" data-id="${s.id}">
+      <span class="s-name">${s.nome}</span>
+      <span class="status-chip ${s.ativo ? 'status-on' : 'status-off'}">${s.ativo ? 'Ativo' : 'Inativo'}</span>
+      <button class="btn ghost" data-edit="${s.id}">Editar</button>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="big">🏷️</div><h3>Nenhum setor cadastrado</h3><p>Clique em "Novo setor" para começar.</p></div>`;
+
+  $('setoresList').querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openSetorModal(setoresCache.find(s => s.id === btn.dataset.edit)));
+  });
+}
+
+function wireSetorModal() {
+  $('btnNovoSetor').addEventListener('click', () => openSetorModal(null));
+  $('btnCloseSetor').addEventListener('click', closeSetorModal);
+  $('modalSetor').addEventListener('click', e => { if (e.target === $('modalSetor')) closeSetorModal(); });
+  $('setorAtivoRow').addEventListener('click', () => $('setorAtivoRow').classList.toggle('present'));
+  $('setorForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = $('setorNome').value.trim();
+    if (!nome) return;
+    if (editingSetorId) {
+      await updateSetor(editingSetorId, { nome, ativo: $('setorAtivoRow').classList.contains('present') });
+      toast('Setor atualizado');
+    } else {
+      await createSetor({ nome });
+      toast('Setor criado');
+    }
+    closeSetorModal();
+    await refreshCadastros();
+  });
+}
+
+function openSetorModal(setor) {
+  editingSetorId = setor ? setor.id : null;
+  $('setorModalTitle').textContent = setor ? 'Editar setor' : 'Novo setor';
+  $('setorNome').value = setor ? setor.nome : '';
+  $('setorAtivoWrap').style.display = setor ? '' : 'none';
+  $('setorAtivoRow').classList.toggle('present', setor ? setor.ativo !== false : true);
+  $('modalSetor').classList.add('show');
+}
+function closeSetorModal() { $('modalSetor').classList.remove('show'); }

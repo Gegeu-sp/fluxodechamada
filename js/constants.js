@@ -9,4 +9,9 @@ export const MOD_KEYS = Object.keys(MODS);
 export const AV_COLORS = ['#3EC6A8', '#8F7FE8', '#FFA14E', '#F76D8A', '#5AA7F0', '#F5B93F'];
 export const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 export const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-export const SECTORS = ['A', 'B', 'C'];
+
+export const CHECKIN_STATUS = [
+  { value: 'faltou', label: 'Faltou' },
+  { value: 'foi_nao_fez', label: 'Não fez' },
+  { value: 'foi_fez', label: 'Fez' },
+];
