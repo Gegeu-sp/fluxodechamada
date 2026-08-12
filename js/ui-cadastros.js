@@ -1,0 +1,225 @@
+import { $, initials, toast } from './utils.js';
+import { MODS, MOD_KEYS, AV_COLORS, WEEKDAYS_PT } from './constants.js';
+import {
+  listAlunos, listTurmas, createAluno, updateAluno,
+  createTurma, updateTurma, matricular,
+} from './data.js';
+
+let alunosCache = [];
+let turmasCache = [];
+let editingAlunoId = null;
+let editingTurmaId = null;
+let turmaDiasSelecionados = new Set();
+let matriculaTurma = null;
+let matriculaSelecionados = new Set();
+
+export async function initCadastros() {
+  wireSubTabs();
+  wireAlunoModal();
+  wireTurmaModal();
+  wireMatriculaModal();
+  $('alunoSearch').addEventListener('input', () => renderAlunosList());
+  await refreshCadastros();
+}
+
+export async function refreshCadastros() {
+  [alunosCache, turmasCache] = await Promise.all([listAlunos(true), listTurmas(true)]);
+  renderAlunosList();
+  renderTurmasList();
+}
+
+function wireSubTabs() {
+  document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+      const sub = btn.dataset.subtab;
+      $('cad-alunos').style.display = sub === 'alunos' ? '' : 'none';
+      $('cad-turmas').style.display = sub === 'turmas' ? '' : 'none';
+    });
+  });
+}
+
+// ================== ALUNOS ==================
+function renderAlunosList() {
+  const q = ($('alunoSearch').value || '').toLowerCase().trim();
+  const rows = alunosCache
+    .filter(a => !q || a.nome.toLowerCase().includes(q))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  $('alunosList').innerHTML = rows.length ? rows.map(a => {
+    const col = AV_COLORS[Math.abs(hashCode(a.id)) % AV_COLORS.length];
+    return `<div class="aluno-row" data-id="${a.id}">
+      <span class="s-ava" style="background:${col}22;color:${col}">${initials(a.nome)}</span>
+      <span class="s-name">${a.nome}</span>
+      <span class="status-chip ${a.ativo ? 'status-on' : 'status-off'}">${a.ativo ? 'Ativo' : 'Inativo'}</span>
+      <button class="btn ghost" data-edit="${a.id}">Editar</button>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="big">🧑‍🤝‍🧑</div><h3>Nenhum aluno cadastrado</h3><p>Clique em "Novo aluno" para começar.</p></div>`;
+
+  $('alunosList').querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openAlunoModal(alunosCache.find(a => a.id === btn.dataset.edit)));
+  });
+}
+
+function hashCode(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return h; }
+
+function wireAlunoModal() {
+  $('btnNovoAluno').addEventListener('click', () => openAlunoModal(null));
+  $('btnCloseAluno').addEventListener('click', closeAlunoModal);
+  $('modalAluno').addEventListener('click', e => { if (e.target === $('modalAluno')) closeAlunoModal(); });
+  $('alunoAtivoRow').addEventListener('click', () => $('alunoAtivoRow').classList.toggle('present'));
+  $('alunoForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = $('alunoNome').value.trim();
+    if (!nome) return;
+    if (editingAlunoId) {
+      await updateAluno(editingAlunoId, { nome, ativo: $('alunoAtivoRow').classList.contains('present') });
+      toast('Aluno atualizado');
+    } else {
+      await createAluno({ nome });
+      toast('Aluno criado');
+    }
+    closeAlunoModal();
+    await refreshCadastros();
+  });
+}
+
+function openAlunoModal(aluno) {
+  editingAlunoId = aluno ? aluno.id : null;
+  $('alunoModalTitle').textContent = aluno ? 'Editar aluno' : 'Novo aluno';
+  $('alunoNome').value = aluno ? aluno.nome : '';
+  $('alunoAtivoWrap').style.display = aluno ? '' : 'none';
+  $('alunoAtivoRow').classList.toggle('present', aluno ? aluno.ativo !== false : true);
+  $('modalAluno').classList.add('show');
+}
+function closeAlunoModal() { $('modalAluno').classList.remove('show'); }
+
+// ================== TURMAS ==================
+function renderTurmasList() {
+  const wrap = $('turmasList');
+  if (!turmasCache.length) {
+    wrap.innerHTML = `<div class="empty"><div class="big">🗂️</div><h3>Nenhuma turma cadastrada</h3><p>Clique em "Nova turma" para começar.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = turmasCache.map(t => {
+    const m = MODS[t.modalidade] || { name: t.modalidade, emoji: '❓', soft: '#eee' };
+    const diasChips = WEEKDAYS_PT.map((d, i) => `<span class="dia-chip ${(t.diasSemana || []).includes(i) ? 'on' : ''}">${d}</span>`).join('');
+    return `<article class="card class-card" data-id="${t.id}">
+      <div class="cc-top">
+        <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
+        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${t.setor} · ${t.capacidade} vagas · ${(t.alunoIds || []).length} matriculados</p></div>
+        <span class="time-chip">${t.horario}</span>
+      </div>
+      <div class="dias-row">${diasChips}</div>
+      <div class="cc-foot">
+        <span class="status-chip ${t.ativa !== false ? 'status-on' : 'status-off'}">${t.ativa !== false ? 'Ativa' : 'Inativa'}</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" data-edit="${t.id}">Editar</button>
+          <button class="btn-open" data-matricular="${t.id}">Matricular →</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+
+  wrap.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openTurmaModal(turmasCache.find(t => t.id === btn.dataset.edit)));
+  });
+  wrap.querySelectorAll('[data-matricular]').forEach(btn => {
+    btn.addEventListener('click', () => openMatriculaModal(turmasCache.find(t => t.id === btn.dataset.matricular)));
+  });
+}
+
+function wireTurmaModal() {
+  $('turmaModalidade').innerHTML = MOD_KEYS.map(k => `<option value="${k}">${MODS[k].emoji} ${MODS[k].name}</option>`).join('');
+  $('turmaDias').innerHTML = WEEKDAYS_PT.map((d, i) => `<button type="button" data-dia="${i}">${d}</button>`).join('');
+  $('turmaDias').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-dia]'); if (!btn) return;
+    const dia = Number(btn.dataset.dia);
+    if (turmaDiasSelecionados.has(dia)) turmaDiasSelecionados.delete(dia); else turmaDiasSelecionados.add(dia);
+    btn.classList.toggle('on', turmaDiasSelecionados.has(dia));
+  });
+  $('btnNovaTurma').addEventListener('click', () => openTurmaModal(null));
+  $('btnCloseTurma').addEventListener('click', closeTurmaModal);
+  $('modalTurma').addEventListener('click', e => { if (e.target === $('modalTurma')) closeTurmaModal(); });
+  $('turmaAtivaRow').addEventListener('click', () => $('turmaAtivaRow').classList.toggle('present'));
+  $('turmaForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!turmaDiasSelecionados.size) { toast('Selecione ao menos um dia da semana'); return; }
+    const payload = {
+      modalidade: $('turmaModalidade').value,
+      horario: $('turmaHorario').value,
+      setor: $('turmaSetor').value,
+      capacidade: Number($('turmaCapacidade').value) || 1,
+      diasSemana: [...turmaDiasSelecionados].sort(),
+    };
+    if (editingTurmaId) {
+      payload.ativa = $('turmaAtivaRow').classList.contains('present');
+      await updateTurma(editingTurmaId, payload);
+      toast('Turma atualizada');
+    } else {
+      await createTurma(payload);
+      toast('Turma criada');
+    }
+    closeTurmaModal();
+    await refreshCadastros();
+  });
+}
+
+function openTurmaModal(turma) {
+  editingTurmaId = turma ? turma.id : null;
+  $('turmaModalTitle').textContent = turma ? 'Editar turma' : 'Nova turma';
+  $('turmaModalidade').value = turma ? turma.modalidade : MOD_KEYS[0];
+  $('turmaHorario').value = turma ? turma.horario : '08:00';
+  $('turmaSetor').value = turma ? turma.setor : 'A';
+  $('turmaCapacidade').value = turma ? turma.capacidade : 20;
+  turmaDiasSelecionados = new Set(turma ? (turma.diasSemana || []) : []);
+  $('turmaDias').querySelectorAll('button[data-dia]').forEach(b => b.classList.toggle('on', turmaDiasSelecionados.has(Number(b.dataset.dia))));
+  $('turmaAtivaWrap').style.display = turma ? '' : 'none';
+  $('turmaAtivaRow').classList.toggle('present', turma ? turma.ativa !== false : true);
+  $('modalTurma').classList.add('show');
+}
+function closeTurmaModal() { $('modalTurma').classList.remove('show'); }
+
+// ================== MATRÍCULA ==================
+function wireMatriculaModal() {
+  $('btnCloseMatricula').addEventListener('click', closeMatriculaModal);
+  $('modalMatricula').addEventListener('click', e => { if (e.target === $('modalMatricula')) closeMatriculaModal(); });
+  $('matriculaSearch').addEventListener('input', renderMatriculaList);
+  $('matriculaList').addEventListener('click', e => {
+    const row = e.target.closest('.s-row'); if (!row) return;
+    const id = row.dataset.id;
+    if (matriculaSelecionados.has(id)) matriculaSelecionados.delete(id); else matriculaSelecionados.add(id);
+    row.classList.toggle('present', matriculaSelecionados.has(id));
+  });
+  $('btnMatriculaDone').addEventListener('click', async () => {
+    if (!matriculaTurma) return;
+    await matricular(matriculaTurma.id, [...matriculaSelecionados]);
+    toast('Matrícula salva');
+    closeMatriculaModal();
+    await refreshCadastros();
+  });
+}
+
+function openMatriculaModal(turma) {
+  matriculaTurma = turma;
+  matriculaSelecionados = new Set(turma.alunoIds || []);
+  $('matriculaSub').textContent = `${MODS[turma.modalidade]?.name || turma.modalidade} ${turma.horario} · Setor ${turma.setor}`;
+  $('matriculaSearch').value = '';
+  renderMatriculaList();
+  $('modalMatricula').classList.add('show');
+}
+function closeMatriculaModal() { $('modalMatricula').classList.remove('show'); matriculaTurma = null; }
+
+function renderMatriculaList() {
+  const q = ($('matriculaSearch').value || '').toLowerCase().trim();
+  const rows = alunosCache
+    .filter(a => a.ativo !== false || matriculaSelecionados.has(a.id))
+    .filter(a => !q || a.nome.toLowerCase().includes(q))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  $('matriculaList').innerHTML = rows.length ? rows.map(a => {
+    const col = AV_COLORS[Math.abs(hashCode(a.id)) % AV_COLORS.length];
+    return `<li class="s-row ${matriculaSelecionados.has(a.id) ? 'present' : ''}" data-id="${a.id}">
+      <span class="s-ava" style="background:${col}22;color:${col}">${initials(a.nome)}</span>
+      <span class="s-name">${a.nome}</span><span class="switch"></span></li>`;
+  }).join('') : `<div class="no-results">Nenhum aluno encontrado 🔍</div>`;
+}

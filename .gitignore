@@ -1,0 +1,5 @@
+# Firebase local emulator/debug artifacts — não fazem parte do produto
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/

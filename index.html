@@ -231,9 +231,67 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
   .tab{padding:10px 15px;font-size:13px}
   .topbar{justify-content:center;text-align:center}
 }
+
+/* ============ LOGIN GATE ============ */
+body:not(.authed) .app{display:none}
+#loginGate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);padding:20px}
+body.authed #loginGate{display:none}
+.login-card{width:100%;max-width:380px;padding:32px 28px;text-align:center}
+.login-card .logo{margin:0 auto 18px}
+.login-card h2{font-size:19px;font-weight:800;margin-bottom:4px}
+.login-card p.sub{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:22px}
+.field{text-align:left;margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input{width:100%;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);
+  background:#F6F9F8;border:1px solid var(--border);border-radius:12px;padding:11px 14px;outline:none;transition:.2s}
+.field input:focus{border-color:var(--aqua);box-shadow:0 0 0 3px rgba(62,198,168,.16)}
+#loginError{color:var(--red);font-size:12.5px;font-weight:700;margin:-6px 0 12px;min-height:16px}
+.userbox{display:flex;align-items:center;gap:10px}
+.userbox .email{font-size:12.5px;font-weight:700;color:var(--ink);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-logout{font-family:inherit;font-size:12px;font-weight:800;color:var(--muted);background:#F1F5F4;
+  border:none;border-radius:99px;padding:8px 14px;cursor:pointer;transition:.2s}
+.btn-logout:hover{background:var(--red-soft);color:var(--red)}
+
+/* ============ CADASTROS ============ */
+.sub-tabs{display:flex;gap:8px;margin-bottom:18px}
+.cad-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:18px}
+.cad-toolbar .m-search{max-width:280px}
+.grid-turmas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.dias-row{display:flex;gap:5px;flex-wrap:wrap}
+.dia-chip{font-size:11px;font-weight:800;border-radius:8px;padding:4px 7px;background:#F1F5F4;color:var(--muted)}
+.dia-chip.on{background:var(--aqua-soft);color:var(--aqua-deep)}
+.status-chip{font-size:11px;font-weight:800;border-radius:99px;padding:4px 10px}
+.status-on{background:var(--aqua-soft);color:var(--aqua-deep)}
+.status-off{background:#F1F5F4;color:var(--muted)}
+.aluno-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.aluno-row:last-child{border-bottom:none}
+.aluno-row .s-name{flex:1}
+.day-toggle{display:flex;gap:6px;flex-wrap:wrap}
+.day-toggle button{font-family:inherit;font-size:12px;font-weight:800;border:1px solid var(--border);
+  background:#F6F9F8;color:var(--muted);border-radius:10px;padding:8px 11px;cursor:pointer;transition:.2s}
+.day-toggle button.on{background:linear-gradient(135deg,var(--aqua),var(--aqua-deep));color:#fff;border-color:transparent}
 </style>
 </head>
 <body>
+
+<!-- ===== LOGIN GATE ===== -->
+<div id="loginGate">
+  <div class="card login-card">
+    <div class="logo" style="width:56px;height:56px;margin:0 auto 18px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Presença<em style="font-style:normal;color:var(--aqua-deep)">+</em></h2>
+    <p class="sub">Entre com sua conta autorizada</p>
+    <form id="loginForm">
+      <div class="field"><label for="loginEmail">E-mail</label><input type="email" id="loginEmail" autocomplete="username" required></div>
+      <div class="field"><label for="loginSenha">Senha</label><input type="password" id="loginSenha" autocomplete="current-password" required></div>
+      <div id="loginError"></div>
+      <button type="submit" class="btn primary big">Entrar</button>
+    </form>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- ===== HEADER ===== -->
@@ -249,7 +307,10 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
     </div>
     <div class="top-right">
       <div class="date-chip"><span class="dot"></span><span id="todayChip">—</span></div>
-      <div class="avatar" title="Prof. Renata Prado">RP</div>
+      <div class="userbox">
+        <span class="email" id="userEmail">—</span>
+        <button class="btn-logout" id="btnLogout">Sair</button>
+      </div>
     </div>
   </header>
 
@@ -262,6 +323,10 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
     <button class="tab" data-tab="analise" role="tab">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
       Análise Gráfica
+    </button>
+    <button class="tab" data-tab="cadastros" role="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Cadastros
     </button>
   </nav>
 
@@ -365,7 +430,30 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
     </div>
   </section>
 
-  <footer>Presença+ · protótipo de alta fidelidade — dados simulados para demonstração</footer>
+  <!-- ===== ABA: CADASTROS ===== -->
+  <section id="sec-cadastros" class="section">
+    <div class="tabs sub-tabs" role="tablist">
+      <button class="tab active" data-subtab="alunos" role="tab">Alunos</button>
+      <button class="tab" data-subtab="turmas" role="tab">Turmas</button>
+    </div>
+
+    <div id="cad-alunos">
+      <div class="card cad-toolbar">
+        <input class="m-search" id="alunoSearch" placeholder="Buscar aluno…">
+        <button class="btn primary" id="btnNovoAluno" style="margin-left:auto">+ Novo aluno</button>
+      </div>
+      <div class="card" id="alunosList"></div>
+    </div>
+
+    <div id="cad-turmas" style="display:none">
+      <div class="card cad-toolbar">
+        <button class="btn primary" id="btnNovaTurma" style="margin-left:auto">+ Nova turma</button>
+      </div>
+      <div class="grid-turmas" id="turmasList"></div>
+    </div>
+  </section>
+
+  <footer>Presença+ · Fluxo-Aula — dados reais registrados pela equipe</footer>
 </div>
 
 <!-- ===== MODAL REGISTRO ===== -->
@@ -390,426 +478,66 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
   </div>
 </div>
 
+<!-- ===== MODAL ALUNO ===== -->
+<div class="modal-overlay" id="modalAluno">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+    <div class="modal-head">
+      <div><h3 id="alunoModalTitle">Novo aluno</h3></div>
+      <button class="btn-close" id="btnCloseAluno" aria-label="Fechar">✕</button>
+    </div>
+    <form id="alunoForm" style="padding:0 22px 22px;display:flex;flex-direction:column;gap:14px">
+      <div class="field"><label for="alunoNome">Nome</label><input type="text" id="alunoNome" required></div>
+      <div class="field" id="alunoAtivoWrap" style="display:none">
+        <label>Situação</label>
+        <div class="s-row present" id="alunoAtivoRow" style="padding:9px 0"><span class="s-name">Ativo</span><span class="switch" id="alunoAtivoSwitch"></span></div>
+      </div>
+      <button type="submit" class="btn primary big">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL TURMA ===== -->
+<div class="modal-overlay" id="modalTurma">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
+    <div class="modal-head">
+      <div><h3 id="turmaModalTitle">Nova turma</h3></div>
+      <button class="btn-close" id="btnCloseTurma" aria-label="Fechar">✕</button>
+    </div>
+    <form id="turmaForm" style="padding:0 22px 22px;display:flex;flex-direction:column;gap:14px">
+      <div class="field"><label for="turmaModalidade">Modalidade</label><select id="turmaModalidade" required></select></div>
+      <div class="field"><label for="turmaHorario">Horário</label><input type="time" id="turmaHorario" required></div>
+      <div class="field"><label for="turmaSetor">Setor</label>
+        <select id="turmaSetor" required><option value="A">Setor A</option><option value="B">Setor B</option><option value="C">Setor C</option></select>
+      </div>
+      <div class="field"><label for="turmaCapacidade">Capacidade</label><input type="number" id="turmaCapacidade" min="1" value="20" required></div>
+      <div class="field"><label>Dias da semana</label><div class="day-toggle" id="turmaDias"></div></div>
+      <div class="field" id="turmaAtivaWrap" style="display:none">
+        <label>Situação</label>
+        <div class="s-row present" id="turmaAtivaRow" style="padding:9px 0"><span class="s-name">Ativa</span><span class="switch" id="turmaAtivaSwitch"></span></div>
+      </div>
+      <button type="submit" class="btn primary big">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL MATRÍCULA ===== -->
+<div class="modal-overlay" id="modalMatricula">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div><h3>Matricular alunos</h3><p id="matriculaSub">—</p></div>
+      <button class="btn-close" id="btnCloseMatricula" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-actions">
+      <input class="m-search" id="matriculaSearch" placeholder="Buscar aluno…">
+    </div>
+    <ul class="student-list" id="matriculaList"></ul>
+    <div class="modal-foot"><button class="btn primary big" id="btnMatriculaDone">Concluído ✓</button></div>
+  </div>
+</div>
+
 <div id="toast"><span class="tk">✓</span><span id="toastMsg">Salvo</span></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script>
-/* ================== UTILITÁRIOS ================== */
-const pad2 = n => String(n).padStart(2,'0');
-const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
-const fmt = n => Math.round(n).toLocaleString('pt-BR');
-function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
-function hashStr(s){ let h=1779033703^s.length; for(let i=0;i<s.length;i++){ h=Math.imul(h^s.charCodeAt(i),3432918353); h=h<<13|h>>>19; } return h>>>0; }
-function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
-function shuffle(arr,rnd){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-
-/* ================== CONFIG ================== */
-const MODS = {
-  yoga:      {name:'Yoga',      emoji:'🧘', color:'#3EC6A8', soft:'#E0F5EF', pop:.88},
-  laboral:   {name:'Laboral',   emoji:'💼', color:'#8F7FE8', soft:'#ECE9FB', pop:.82},
-  pilates:   {name:'Pilates',   emoji:'🤸', color:'#FFA14E', soft:'#FFEEDA', pop:.84},
-  danca:     {name:'Dança',     emoji:'💃', color:'#F76D8A', soft:'#FDE7EC', pop:.80},
-  funcional: {name:'Funcional', emoji:'🏋️', color:'#5AA7F0', soft:'#E5F0FC', pop:.76},
-};
-const MOD_KEYS = Object.keys(MODS);
-const SECTOR_CAP = { A:[18,24], B:[14,20], C:[10,16] };
-const AV_COLORS = ['#3EC6A8','#8F7FE8','#FFA14E','#F76D8A','#5AA7F0','#F5B93F'];
-const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-/* ================== ALUNOS ================== */
-const FIRST = ['Ana','Bruno','Carla','Diego','Elisa','Felipe','Gabriela','Heitor','Isabela','João','Karina','Lucas','Marina','Nicolas','Olívia','Paulo','Rafael','Sofia','Thiago','Vinícius','Yasmin','Beatriz','Caio','Débora','Eduardo','Flávia','Gustavo','Helena','Igor','Juliana','Larissa','Marcos','Natália','Otávio','Patrícia','Renata','Sérgio','Tatiane','Vitor','Camila','Daniel','Fernanda','Henrique','Letícia','Matheus'];
-const LAST = ['Silva','Souza','Oliveira','Santos','Pereira','Costa','Rodrigues','Almeida','Nascimento','Lima','Araújo','Fernandes','Carvalho','Gomes','Martins','Rocha','Ribeiro','Barbosa','Cardoso','Teixeira','Moraes','Farias','Pires','Monteiro'];
-const STUDENTS = (()=>{ const rnd=mulberry32(20240613); const out=[], used=new Set();
-  while(out.length<80){ const nm = FIRST[Math.floor(rnd()*FIRST.length)]+' '+LAST[Math.floor(rnd()*LAST.length)]+' '+LAST[Math.floor(rnd()*LAST.length)];
-    if(!used.has(nm)){ used.add(nm); out.push({id:out.length, name:nm}); } }
-  return out; })();
-
-/* ================== PERSISTÊNCIA ================== */
-const STORE_KEY='presenca_plus_v1';
-let overrides={};
-try{ overrides = JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch(e){ overrides={}; }
-function persistClass(c){
-  try{ if(!overrides[c.date]) overrides[c.date]={};
-    overrides[c.date][c.id]=c.students.filter(s=>s.present).map(s=>s.id);
-    localStorage.setItem(STORE_KEY, JSON.stringify(overrides));
-  }catch(e){}
-}
-
-/* ================== GERAÇÃO DE AULAS ================== */
-const dayCache = new Map();
-function getDay(dateStr){
-  if(dayCache.has(dateStr)) return dayCache.get(dateStr);
-  const rnd = mulberry32(hashStr(dateStr));
-  const dow = new Date(dateStr+'T12:00:00').getDay();
-  let slots;
-  if(dow===0) slots=[['08:00','yoga'],['09:30','funcional']];
-  else if(dow===6) slots=[['07:30','funcional'],['09:00','yoga'],['10:30','danca'],['17:00','pilates']];
-  else slots=[['06:30','funcional'],['07:30','laboral'],['08:00','yoga'],['09:30','pilates'],['12:00','laboral'],['17:30','funcional'],['18:30','yoga'],['19:30','danca']];
-  if(dow>=1&&dow<=5){
-    slots = slots.filter(()=>rnd()>0.12);
-    if(slots.length<5) slots=[['06:30','funcional'],['07:30','laboral'],['08:00','yoga'],['09:30','pilates'],['12:00','laboral'],['18:30','yoga']];
-  }
-  const classes=[];
-  slots.forEach(([time,mod])=>{
-    if(rnd()<0.2){ mod = MOD_KEYS[Math.floor(rnd()*MOD_KEYS.length)]; }
-    const sRoll=rnd(); const sector = sRoll<0.45?'A':sRoll<0.8?'B':'C';
-    const [cMin,cMax]=SECTOR_CAP[sector];
-    const capacity = cMin + Math.floor(rnd()*(cMax-cMin+1));
-    const enrolled = shuffle(STUDENTS,rnd).slice(0,capacity);
-    let students; const occRoll=rnd();
-    if(occRoll<0.22){ students=enrolled.map(s=>({...s,present:true})); }
-    else if(occRoll<0.4){ const n=Math.floor(capacity*(0.28+rnd()*0.25)); students=enrolled.map((s,i)=>({...s,present:i<n})); }
-    else{ const p=MODS[mod].pop+(rnd()*0.12-0.06); students=enrolled.map(s=>({...s,present:rnd()<p})); }
-    classes.push({ id:`${dateStr}_${time}_${mod}_${sector}`, date:dateStr, time, mod, sector, capacity, students });
-  });
-  classes.sort((a,b)=>a.time.localeCompare(b.time));
-  const ov = overrides[dateStr]||{};
-  classes.forEach(c=>{ if(ov[c.id]){ const st=new Set(ov[c.id]); c.students.forEach(s=>s.present=st.has(s.id)); } });
-  dayCache.set(dateStr, classes);
-  return classes;
-}
-const presentOf = c => c.students.reduce((a,s)=>a+(s.present?1:0),0);
-function monthDays(ym){ const [y,m]=ym.split('-').map(Number); const n=new Date(y,m,0).getDate();
-  return Array.from({length:n},(_,i)=>`${ym}-${pad2(i+1)}`); }
-
-/* ================== ESTADO ================== */
-const state = { date: todayStr(), modality:'all', sector:'all',
-                month: todayStr().slice(0,7), aModality:'all', aSector:'all', tab:'presenca' };
-
-/* ================== HELPERS DOM ================== */
-const $ = id => document.getElementById(id);
-let toastTimer;
-function toast(msg){ $('toastMsg').textContent=msg; $('toast').classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400); }
-function countUp(el, to, opts={}){
-  const {suffix='', dur=650} = opts;
-  const from = parseFloat(el.dataset.v||0); const t0=performance.now();
-  function step(t){ const p=Math.min(1,(t-t0)/dur); const e=1-Math.pow(1-p,3);
-    el.textContent = fmt(from+(to-from)*e)+suffix;
-    if(p<1) requestAnimationFrame(step); else el.dataset.v=to; }
-  requestAnimationFrame(step);
-}
-function initials(name){ const p=name.split(' '); return (p[0][0]+(p[p.length-1][0]||'')).toUpperCase(); }
-
-/* ================== DASHBOARD ================== */
-function filteredClasses(){
-  return getDay(state.date).filter(c =>
-    (state.modality==='all'||c.mod===state.modality) &&
-    (state.sector==='all'||c.sector===state.sector));
-}
-function renderDashboard(){
-  const list = filteredClasses();
-  const present = list.reduce((a,c)=>a+presentOf(c),0);
-  const capacity = list.reduce((a,c)=>a+c.capacity,0);
-  const occ = capacity? present/capacity : 0;
-  countUp($('stPresentes'), present);
-  countUp($('stPrevistos'), capacity);
-  countUp($('stOcup'), occ*100, {suffix:'%'});
-  countUp($('stAulas'), list.length);
-
-  const wrap = $('classList');
-  if(!list.length){
-    wrap.innerHTML = `<div class="empty"><div class="big">🗓️</div><h3>Nenhuma aula encontrada</h3>
-      <p>Ajuste os filtros ou escolha outra data.</p>
-      <button onclick="clearFilters()">Limpar filtros</button></div>`;
-    return;
-  }
-  wrap.innerHTML = list.map((c,i)=>{
-    const m=MODS[c.mod], p=presentOf(c), r=p/c.capacity;
-    const st = r>=1 ? {t:'Lotada', cls:'occ-red', bar:'var(--red)'}
-             : r>=0.75 ? {t:'Quase lotada', cls:'occ-yellow', bar:'var(--yellow)'}
-             : {t:'Tranquila', cls:'occ-green', bar:'var(--aqua)'};
-    return `<article class="class-card" data-id="${c.id}" style="animation-delay:${i*50}ms">
-      <div class="cc-top">
-        <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
-        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${c.sector} · ${c.capacity} vagas</p></div>
-        <span class="time-chip">${c.time}</span>
-      </div>
-      <div class="cc-count"><b>${p}</b><span>/ ${c.capacity} presentes</span></div>
-      <div class="bar"><i style="width:${Math.max(4,r*100)}%;background:${st.bar}"></i></div>
-      <div class="cc-foot">
-        <span class="occ-chip ${st.cls}">${st.t}</span>
-        <button class="btn-open">Registrar presença →</button>
-      </div>
-    </article>`;
-  }).join('');
-}
-function clearFilters(){
-  state.modality='all'; state.sector='all';
-  $('fMod').value='all';
-  document.querySelectorAll('#fSector .chip').forEach(b=>b.classList.toggle('active', b.dataset.v==='all'));
-  renderDashboard();
-}
-
-/* ================== MODAL ================== */
-let activeClass=null;
-function openModal(c){
-  activeClass=c; const m=MODS[c.mod];
-  $('mBadge').textContent=m.emoji; $('mBadge').style.background=m.soft;
-  $('mTitle').textContent=m.name;
-  $('mSub').textContent=`${c.time} · Setor ${c.sector} · ${c.capacity} vagas`;
-  $('mSearch').value='';
-  $('mPresent').dataset.v='0';
-  renderStudents();
-  $('modal').classList.add('show');
-  document.body.classList.add('no-scroll');
-}
-function closeModal(){
-  if(!activeClass) return;
-  $('modal').classList.remove('show');
-  document.body.classList.remove('no-scroll');
-  const p=presentOf(activeClass);
-  toast(`Presença salva · ${MODS[activeClass.mod].name} ${activeClass.time} — ${p}/${activeClass.capacity}`);
-  activeClass=null;
-  renderDashboard();
-}
-function renderStudents(){
-  const q=($('mSearch').value||'').toLowerCase().trim();
-  const rows=activeClass.students.filter(s=>!q||s.name.toLowerCase().includes(q));
-  $('mList').innerHTML = rows.length ? rows.map(s=>{
-    const col=AV_COLORS[s.id%AV_COLORS.length];
-    return `<li class="s-row ${s.present?'present':''}" data-id="${s.id}">
-      <span class="s-ava" style="background:${col}22;color:${col}">${initials(s.name)}</span>
-      <span class="s-name">${s.name}</span><span class="switch"></span></li>`;
-  }).join('') : `<div class="no-results">Nenhum aluno encontrado 🔍</div>`;
-  updateModalCounter();
-}
-function updateModalCounter(){
-  const p=presentOf(activeClass), r=p/activeClass.capacity;
-  countUp($('mPresent'), p, {dur:350});
-  $('mCap').textContent=activeClass.capacity;
-  const bar=$('mBar'); bar.style.width=Math.max(3,r*100)+'%';
-  bar.style.background = r>=1?'var(--red)':r>=0.75?'var(--yellow)':'var(--aqua)';
-}
-
-/* ================== ANÁLISE GRÁFICA ================== */
-let charts=null, chartsInit=false;
-
-function analyticsData(){
-  const ym=state.month, parts=ym.split('-').map(Number), year=parts[0], mon=parts[1];
-  const t=todayStr();
-  const match = c => (state.aSector==='all'||c.sector===state.aSector) && (state.aModality==='all'||c.mod===state.aModality);
-  const daySum = d => getDay(d).reduce((a,c)=>a+(match(c)?presentOf(c):0),0);
-
-  const mDays=monthDays(ym);
-  const mData=mDays.map(d=> d>t ? null : daySum(d));
-  const mLabels=mDays.map(d=>String(parseInt(d.slice(8),10)));
-
-  const yCur=Array(12).fill(null), yPrev=Array(12).fill(0);
-  for(let m=1;m<=12;m++){
-    const days=monthDays(`${year}-${pad2(m)}`);
-    let s=0, any=false;
-    days.forEach(d=>{ if(d<=t){ s+=daySum(d); any=true; } });
-    yCur[m-1]= any? s : null;
-    const pDays=monthDays(`${year-1}-${pad2(m)}`);
-    yPrev[m-1]= pDays.reduce((a,d)=>a+daySum(d),0);
-  }
-  const totalCur=yCur.reduce((a,v)=>a+(v||0),0);
-  const monthsElapsed=yCur.filter(v=>v!==null).length;
-  const media=monthsElapsed? totalCur/monthsElapsed : 0;
-  const prevPeriod=yPrev.slice(0,monthsElapsed).reduce((a,v)=>a+v,0);
-  const delta= prevPeriod? ((totalCur-prevPeriod)/prevPeriod*100) : 0;
-  let bestIdx=0,bestVal=-1;
-  yCur.forEach((v,i)=>{ if(v!==null&&v>bestVal){bestVal=v;bestIdx=i;} });
-
-  const donut=MOD_KEYS.map(id=>{
-    let p=0,cp=0;
-    mDays.forEach(d=>{ if(d<=t) getDay(d).forEach(c=>{ if(c.mod===id&&match(c)){ p+=presentOf(c); cp+=c.capacity; } }); });
-    return {id, p, cp};
-  });
-  const totalDonut=donut.reduce((a,x)=>a+x.p,0);
-  const totalCap=donut.reduce((a,x)=>a+x.cp,0);
-  const totalOcc= totalCap? totalDonut/totalCap : 0;
-
-  return {year, mon, mLabels, mData, yCur, yPrev, totalCur, media, delta, bestIdx, bestVal,
-          monthsElapsed, donut, totalDonut, totalOcc, monthName: MONTHS_PT[mon-1]};
-}
-
-function areaGrad(chartCtx, rgb){
-  const cx=chartCtx.chart.ctx, a=chartCtx.chart.chartArea;
-  if(!a) return `rgba(${rgb},.2)`;
-  const g=cx.createLinearGradient(0,a.bottom,0,a.top);
-  g.addColorStop(0,`rgba(${rgb},0)`); g.addColorStop(1,`rgba(${rgb},.30)`); return g;
-}
-function barGrad(chartCtx){
-  const cx=chartCtx.chart.ctx, a=chartCtx.chart.chartArea;
-  if(!a) return 'rgba(62,198,168,.8)';
-  const g=cx.createLinearGradient(0,a.bottom,0,a.top);
-  g.addColorStop(0,'rgba(62,198,168,.45)'); g.addColorStop(1,'rgba(35,169,140,.95)'); return g;
-}
-
-function donutLabelFn(d){ return function(c){ const x=d.donut[c.dataIndex]; const share=d.totalDonut?Math.round(x.p/d.totalDonut*100):0; return ` ${fmt(x.p)} presenças (${share}%)`; }; }
-function donutAfterFn(d){ return function(c){ const x=d.donut[c.dataIndex]; return ` Ocupação: ${x.cp?Math.round(x.p/x.cp*100):0}%`; }; }
-
-function renderCharts(){
-  const d=analyticsData();
-
-  /* KPIs */
-  countUp($('kTotal'), d.totalCur);
-  $('kTotalLbl').textContent=`Total de presenças · ${d.year}`;
-  countUp($('kMedia'), d.media);
-  const kd=$('kDelta');
-  kd.textContent=(d.delta>=0?'+':'')+d.delta.toFixed(1).replace('.',',')+'%';
-  kd.className='stat-value kpi-delta '+(d.delta>=0?'up':'down');
-  $('kDeltaLbl').textContent=`vs. ${d.year-1} (mesmo período)`;
-  $('kBest').textContent = d.bestVal>0 ? `${MONTHS_PT[d.bestIdx].slice(0,3)} · ${fmt(d.bestVal)}` : '—';
-
-  /* títulos */
-  $('mTitle').textContent=`${cap(d.monthName)} de ${d.year}`;
-  $('mTag').textContent = state.month===todayStr().slice(0,7) ? 'considerado até hoje' : 'mês completo';
-  $('yTitle').textContent=`Presenças por mês · ${d.year} vs ${d.year-1}`;
-  $('dTitle').textContent=`${cap(d.monthName)} de ${d.year}`;
-
-  /* legenda donut */
-  $('donutLegend').innerHTML = d.donut.map(x=>{
-    const m=MODS[x.id], pct=x.cp? Math.round(x.p/x.cp*100):0;
-    return `<div class="dl-row">
-      <div class="dl-top"><span class="dl-dot" style="background:${m.color}"></span>
-        <span class="dl-name">${m.emoji} ${m.name}</span>
-        <span class="dl-val">${fmt(x.p)}</span><span class="dl-pct">${pct}%</span></div>
-      <div class="dl-bar"><i style="width:${pct}%;background:${m.color}"></i></div></div>`;
-  }).join('');
-
-  if(typeof Chart==='undefined'){
-    $('chartsGrid').innerHTML='<div class="card chart-card span3"><p style="color:var(--muted);font-weight:600">Não foi possível carregar a biblioteca de gráficos. Verifique a conexão.</p></div>';
-    return;
-  }
-
-  if(!chartsInit){
-    Chart.defaults.font.family="'Plus Jakarta Sans',system-ui,sans-serif";
-    Chart.defaults.color='#7B8A96';
-    Chart.defaults.plugins.tooltip.backgroundColor='#22313C';
-    Chart.defaults.plugins.tooltip.padding=12;
-    Chart.defaults.plugins.tooltip.cornerRadius=12;
-    Chart.defaults.plugins.tooltip.titleFont={weight:700};
-    Chart.defaults.plugins.tooltip.displayColors=false;
-    Chart.register({ id:'centerText', afterDraw(chart){
-      const o=chart.config.options.plugins.centerText; if(!o) return;
-      const meta=chart.getDatasetMeta(0); if(!meta.data.length) return;
-      const pt=meta.data[0], c=chart.ctx; c.save(); c.textAlign='center'; c.textBaseline='middle';
-      c.font="800 26px 'Plus Jakarta Sans'"; c.fillStyle='#22313C'; c.fillText(o.text,pt.x,pt.y-8);
-      c.font="600 12px 'Plus Jakarta Sans'"; c.fillStyle='#7B8A96'; c.fillText(o.sub,pt.x,pt.y+14); c.restore();
-    }});
-
-    charts={
-      monthly:new Chart($('chMonthly'),{ type:'bar',
-        data:{labels:d.mLabels,datasets:[{data:d.mData, skipNull:true, borderRadius:7, borderSkipped:false,
-          maxBarThickness:26, backgroundColor:barGrad, hoverBackgroundColor:'#23A98C'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{
-            title:it=>`Dia ${it[0].label} de ${d.monthName}`,
-            label:c=>` ${c.parsed.y} presenças`}}},
-          scales:{x:{grid:{display:false},ticks:{font:{size:10.5},maxRotation:0,autoSkip:true}},
-                  y:{beginAtZero:true,grid:{color:'rgba(34,49,60,.06)'},border:{display:false},ticks:{precision:0}}}}}),
-      yearly:new Chart($('chYearly'),{ type:'line',
-        data:{labels:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
-          datasets:[
-            {label:String(d.year), data:d.yCur, borderColor:'#3EC6A8', borderWidth:2.6, tension:.4, fill:true,
-             backgroundColor:(cx)=>areaGrad(cx,'62,198,168'), pointRadius:3.5, pointBackgroundColor:'#fff',
-             pointBorderColor:'#3EC6A8', pointBorderWidth:2, pointHoverRadius:6, spanGaps:false},
-            {label:String(d.year-1), data:d.yPrev, borderColor:'#8F7FE8', borderWidth:2, borderDash:[6,5],
-             tension:.4, fill:false, pointRadius:2.5, pointBackgroundColor:'#8F7FE8', pointHoverRadius:5}]},
-        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-          plugins:{legend:{position:'top',align:'end',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,font:{size:12,weight:700}}},
-            tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)} presenças`}}},
-          scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(34,49,60,.06)'},border:{display:false}}}}}),
-      donut:new Chart($('chDonut'),{ type:'doughnut',
-        data:{labels:d.donut.map(x=>MODS[x.id].name),
-          datasets:[{data:d.donut.map(x=>x.p), backgroundColor:d.donut.map(x=>MODS[x.id].color),
-          borderColor:'#fff', borderWidth:3, hoverOffset:10}]},
-        options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
-          plugins:{centerText:{text:Math.round(d.totalOcc*100)+'%', sub:'ocupação média'},
-            legend:{display:false},
-            tooltip:{callbacks:{ label:donutLabelFn(d), afterLabel:donutAfterFn(d) }}}}})
-    };
-    chartsInit=true;
-  } else {
-    charts.monthly.data.labels=d.mLabels;
-    charts.monthly.data.datasets[0].data=d.mData;
-    charts.monthly.options.plugins.tooltip.callbacks.title=it=>`Dia ${it[0].label} de ${d.monthName}`;
-    charts.yearly.data.datasets[0].data=d.yCur;
-    charts.yearly.data.datasets[0].label=String(d.year);
-    charts.yearly.data.datasets[1].data=d.yPrev;
-    charts.yearly.data.datasets[1].label=String(d.year-1);
-    charts.donut.data.datasets[0].data=d.donut.map(x=>x.p);
-    charts.donut.options.plugins.centerText.text=Math.round(d.totalOcc*100)+'%';
-    charts.donut.options.plugins.tooltip.callbacks.label=donutLabelFn(d);
-    charts.donut.options.plugins.tooltip.callbacks.afterLabel=donutAfterFn(d);
-    Object.values(charts).forEach(ch=>ch.update());
-  }
-}
-
-/* ================== EVENTOS ================== */
-document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
-  if(state.tab===btn.dataset.tab) return;
-  state.tab=btn.dataset.tab;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  const sec=$(state.tab==='presenca'?'sec-presenca':'sec-analise');
-  void sec.offsetWidth; sec.classList.add('active');
-  if(state.tab==='analise') requestAnimationFrame(renderCharts);
-}));
-
-$('fDate').value=state.date;
-$('fDate').addEventListener('change',e=>{ if(e.target.value){ state.date=e.target.value; renderDashboard(); } });
-
-const modOptions = `<option value="all">Todas as modalidades</option>`+
-  MOD_KEYS.map(k=>`<option value="${k}">${MODS[k].emoji} ${MODS[k].name}</option>`).join('');
-$('fMod').innerHTML=modOptions; $('fModA').innerHTML=modOptions;
-$('fMod').addEventListener('change',e=>{ state.modality=e.target.value; renderDashboard(); });
-$('fModA').addEventListener('change',e=>{ state.aModality=e.target.value; if(chartsInit||state.tab==='analise') renderCharts(); });
-
-function wireChips(containerId, cb){
-  $(containerId).addEventListener('click',e=>{
-    const b=e.target.closest('.chip'); if(!b) return;
-    $(containerId).querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); cb(b.dataset.v);
-  });
-}
-wireChips('fSector', v=>{ state.sector=v; renderDashboard(); });
-wireChips('fSectorA', v=>{ state.aSector=v; renderCharts(); });
-
-(function(){
-  const sel=$('fMonth'), now=new Date();
-  for(let i=0;i<18;i++){
-    const dt=new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const v=`${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`;
-    const o=document.createElement('option');
-    o.value=v; o.textContent=`${cap(dt.toLocaleDateString('pt-BR',{month:'long'}))} / ${dt.getFullYear()}`;
-    if(v===state.month) o.selected=true;
-    sel.appendChild(o);
-  }
-  sel.addEventListener('change',e=>{ state.month=e.target.value; renderCharts(); });
-})();
-
-$('classList').addEventListener('click',e=>{
-  const card=e.target.closest('.class-card'); if(!card) return;
-  const c=getDay(state.date).find(x=>x.id===card.dataset.id);
-  if(c) openModal(c);
-});
-
-$('btnClose').addEventListener('click',closeModal);
-$('btnDone').addEventListener('click',closeModal);
-$('modal').addEventListener('click',e=>{ if(e.target===$('modal')) closeModal(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('modal').classList.contains('show')) closeModal(); });
-$('mList').addEventListener('click',e=>{
-  const row=e.target.closest('.s-row'); if(!row||!activeClass) return;
-  const s=activeClass.students.find(x=>x.id===+row.dataset.id); if(!s) return;
-  s.present=!s.present; row.classList.toggle('present',s.present);
-  updateModalCounter(); persistClass(activeClass);
-});
-$('mSearch').addEventListener('input',renderStudents);
-$('btnAll').addEventListener('click',()=>{ if(!activeClass)return;
-  activeClass.students.forEach(s=>s.present=true); renderStudents(); persistClass(activeClass); });
-$('btnNone').addEventListener('click',()=>{ if(!activeClass)return;
-  activeClass.students.forEach(s=>s.present=false); renderStudents(); persistClass(activeClass); });
-
-/* ================== INIT ================== */
-(function init(){
-  const now=new Date();
-  $('todayChip').textContent=cap(now.toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'}));
-  renderDashboard();
-})();
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
