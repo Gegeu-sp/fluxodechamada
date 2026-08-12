@@ -106,33 +106,46 @@ export async function getAulasDoDia(dateStr) {
   const alunosMap = new Map(alunos.map(a => [a.id, a]));
   const setoresMap = new Map(setores.map(s => [s.id, s]));
 
-  const doDia = turmas.filter(t => t.ativa !== false && (t.diasSemana || []).includes(dow));
+  // Turmas com formato inválido/incompleto (ex.: criadas manualmente no Console
+  // antes deste schema existir) não podem derrubar a aula do dia inteiro — cada
+  // uma é resolvida isoladamente, e a que falhar vira null e é descartada.
+  const doDia = turmas.filter(t =>
+    t.ativa !== false &&
+    typeof t.horario === 'string' &&
+    Array.isArray(t.diasSemana) &&
+    t.diasSemana.includes(dow));
 
   const aulas = await Promise.all(doDia.map(async turma => {
-    const presencaId = `${turma.id}_${dateStr}`;
-    const presencaSnap = await getDoc(doc(db, 'presencas', presencaId));
-    const checkin = presencaSnap.exists() ? (presencaSnap.data().checkin || {}) : {};
+    try {
+      const presencaId = `${turma.id}_${dateStr}`;
+      const presencaSnap = await getDoc(doc(db, 'presencas', presencaId));
+      const checkin = presencaSnap.exists() ? (presencaSnap.data().checkin || {}) : {};
 
-    const students = (turma.alunoIds || [])
-      .map(id => alunosMap.get(id))
-      .filter(Boolean)
-      .map(a => ({ id: a.id, name: a.nome, status: checkin[a.id] || 'faltou' }));
+      const students = (turma.alunoIds || [])
+        .map(id => alunosMap.get(id))
+        .filter(Boolean)
+        .map(a => ({ id: a.id, name: a.nome, status: checkin[a.id] || 'faltou' }));
 
-    return {
-      id: turma.id,
-      turmaId: turma.id,
-      date: dateStr,
-      time: turma.horario,
-      mod: turma.modalidade,
-      sector: turma.setor,
-      sectorName: (setoresMap.get(turma.setor) || {}).nome || turma.setor,
-      capacity: turma.capacidade,
-      students,
-    };
+      return {
+        id: turma.id,
+        turmaId: turma.id,
+        date: dateStr,
+        time: turma.horario,
+        mod: turma.modalidade,
+        sector: turma.setor,
+        sectorName: (setoresMap.get(turma.setor) || {}).nome || turma.setor,
+        capacity: turma.capacidade || 0,
+        students,
+      };
+    } catch (e) {
+      console.error(`Falha ao carregar a turma ${turma.id} em ${dateStr}:`, e);
+      return null;
+    }
   }));
 
-  aulas.sort((a, b) => a.time.localeCompare(b.time));
-  return aulas;
+  const validAulas = aulas.filter(Boolean);
+  validAulas.sort((a, b) => a.time.localeCompare(b.time));
+  return validAulas;
 }
 
 // ================== AULAS DA SEMANA (agenda) ==================

@@ -1,10 +1,20 @@
-import { $, cap } from './utils.js';
+import { $, cap, toast } from './utils.js';
 import { watchAuth, login, logout } from './auth.js';
 import { initPresenca, renderDashboard } from './ui-presenca.js';
 import { initAnalise, renderCharts } from './ui-analise.js';
 import { initCadastros, refreshCadastros } from './ui-cadastros.js';
 
 let appInited = false;
+
+// Rede de segurança: sem isso, um erro não tratado em qualquer tela vira uma
+// área em branco silenciosa (visível no console do navegador, mas quem usa
+// pelo celular não tem como abrir o console) — aqui o erro real aparece na tela.
+function showFatalError(msg) {
+  console.error(msg);
+  toast(`Erro: ${String(msg).slice(0, 140)}`);
+}
+window.addEventListener('error', e => showFatalError(e.message));
+window.addEventListener('unhandledrejection', e => showFatalError(e.reason && e.reason.message ? e.reason.message : e.reason));
 
 function wireTabs() {
   document.querySelectorAll('.app > .tabs > .tab').forEach(btn => btn.addEventListener('click', () => {
