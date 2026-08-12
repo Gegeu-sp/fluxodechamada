@@ -7,3 +7,12 @@ ui-debug.log
 # Configuração real do Firebase (chaves do projeto) — nunca commitar.
 # Use js/firebase-config.example.js como modelo.
 js/firebase-config.js
+
+# Proteção preventiva: qualquer credencial/segredo que venha a existir
+# no futuro (ex.: chave de service account de um script admin, .env de
+# alguma ferramenta auxiliar). Nada disso existe no projeto hoje.
+.env
+.env.*
+*serviceAccountKey*.json
+*.pem
+*.key
