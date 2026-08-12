@@ -11,6 +11,7 @@ import {
 let turmasCache = null;
 let alunosCache = null;
 let setoresCache = null;
+let empresasCache = null;
 
 export async function listTurmas(force = false) {
   if (turmasCache && !force) return turmasCache;
@@ -33,10 +34,18 @@ export async function listSetores(force = false) {
   return setoresCache;
 }
 
+export async function listEmpresas(force = false) {
+  if (empresasCache && !force) return empresasCache;
+  const snap = await getDocs(collection(db, 'empresas'));
+  empresasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return empresasCache;
+}
+
 function invalidateCache() {
   turmasCache = null;
   alunosCache = null;
   setoresCache = null;
+  empresasCache = null;
 }
 
 // ================== ALUNOS ==================
@@ -67,10 +76,24 @@ export async function updateSetor(id, data) {
   invalidateCache();
 }
 
+// ================== EMPRESAS ==================
+export async function createEmpresa({ nome }) {
+  const ref = await addDoc(collection(db, 'empresas'), {
+    nome, ativo: true, criadoEm: serverTimestamp(),
+  });
+  invalidateCache();
+  return ref.id;
+}
+
+export async function updateEmpresa(id, data) {
+  await updateDoc(doc(db, 'empresas', id), data);
+  invalidateCache();
+}
+
 // ================== TURMAS ==================
-export async function createTurma({ modalidade, horario, diasSemana, setor, capacidade }) {
+export async function createTurma({ modalidade, horario, diasSemana, setor, empresa, capacidade }) {
   const ref = await addDoc(collection(db, 'turmas'), {
-    modalidade, horario, diasSemana, setor, capacidade,
+    modalidade, horario, diasSemana, setor, empresa, capacidade,
     alunoIds: [], ativa: true,
   });
   invalidateCache();
@@ -102,9 +125,10 @@ export async function getAulasDoDia(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dow = new Date(y, m - 1, d).getDay();
 
-  const [turmas, alunos, setores] = await Promise.all([listTurmas(), listAlunos(), listSetores()]);
+  const [turmas, alunos, setores, empresas] = await Promise.all([listTurmas(), listAlunos(), listSetores(), listEmpresas()]);
   const alunosMap = new Map(alunos.map(a => [a.id, a]));
   const setoresMap = new Map(setores.map(s => [s.id, s]));
+  const empresasMap = new Map(empresas.map(e => [e.id, e]));
 
   // Turmas com formato inválido/incompleto (ex.: criadas manualmente no Console
   // antes deste schema existir) não podem derrubar a aula do dia inteiro — cada
@@ -134,6 +158,8 @@ export async function getAulasDoDia(dateStr) {
         mod: turma.modalidade,
         sector: turma.setor,
         sectorName: (setoresMap.get(turma.setor) || {}).nome || turma.setor,
+        empresa: turma.empresa,
+        empresaName: (empresasMap.get(turma.empresa) || {}).nome || turma.empresa || '—',
         capacity: turma.capacidade || 0,
         students,
       };
@@ -177,13 +203,14 @@ export async function savePresenca(turmaId, dateStr, checkin, uid) {
     turmaId, data: dateStr, checkin,
     modalidade: turma ? turma.modalidade : null,
     setor: turma ? turma.setor : null,
+    empresa: turma ? turma.empresa : null,
     atualizadoPor: uid,
     atualizadoEm: serverTimestamp(),
   });
 }
 
 // ================== PRESENÇAS EM UM PERÍODO (para Análise) ==================
-export async function getPresencasEntre(dataInicio, dataFim, { modalidade = 'all', setor = 'all' } = {}) {
+export async function getPresencasEntre(dataInicio, dataFim, { modalidade = 'all', setor = 'all', empresa = 'all' } = {}) {
   const q = query(
     collection(db, 'presencas'),
     where('data', '>=', dataInicio),
@@ -194,5 +221,6 @@ export async function getPresencasEntre(dataInicio, dataFim, { modalidade = 'all
     .map(d => d.data())
     .filter(p =>
       (modalidade === 'all' || p.modalidade === modalidade) &&
-      (setor === 'all' || p.setor === setor));
+      (setor === 'all' || p.setor === setor) &&
+      (empresa === 'all' || p.empresa === empresa));
 }

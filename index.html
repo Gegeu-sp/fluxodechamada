@@ -385,6 +385,9 @@ body.authed #loginGate{display:none}
       <input type="date" id="fDate">
       <span class="lbl">Modalidade</span>
       <select id="fMod"></select>
+      <div class="chips" id="fEmpresa">
+        <button class="chip active" data-v="all">Todas as empresas</button>
+      </div>
       <div class="chips" id="fSector">
         <button class="chip active" data-v="all">Todos os setores</button>
       </div>
@@ -420,6 +423,9 @@ body.authed #loginGate{display:none}
       <select id="fMonth"></select>
       <span class="lbl">Modalidade</span>
       <select id="fModA"></select>
+      <div class="chips" id="fEmpresaA">
+        <button class="chip active" data-v="all">Todas as empresas</button>
+      </div>
       <div class="chips" id="fSectorA">
         <button class="chip active" data-v="all">Todos os setores</button>
       </div>
@@ -460,6 +466,7 @@ body.authed #loginGate{display:none}
       <button class="tab active" data-subtab="alunos" role="tab">Alunos</button>
       <button class="tab" data-subtab="turmas" role="tab">Turmas</button>
       <button class="tab" data-subtab="setores" role="tab">Setores</button>
+      <button class="tab" data-subtab="empresas" role="tab">Empresas</button>
     </div>
 
     <div id="cad-alunos">
@@ -483,6 +490,14 @@ body.authed #loginGate{display:none}
         <button class="btn primary" id="btnNovoSetor" style="margin-left:auto">+ Novo setor</button>
       </div>
       <div class="card" id="setoresList"></div>
+    </div>
+
+    <div id="cad-empresas" style="display:none">
+      <div class="card cad-toolbar">
+        <input class="m-search" id="empresaSearch" placeholder="Buscar empresa…">
+        <button class="btn primary" id="btnNovaEmpresa" style="margin-left:auto">+ Nova empresa</button>
+      </div>
+      <div class="card" id="empresasList"></div>
     </div>
   </section>
 
@@ -547,6 +562,24 @@ body.authed #loginGate{display:none}
   </div>
 </div>
 
+<!-- ===== MODAL EMPRESA ===== -->
+<div class="modal-overlay" id="modalEmpresa">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+    <div class="modal-head">
+      <div><h3 id="empresaModalTitle">Nova empresa</h3></div>
+      <button class="btn-close" id="btnCloseEmpresa" aria-label="Fechar">✕</button>
+    </div>
+    <form id="empresaForm" style="padding:0 22px 22px;display:flex;flex-direction:column;gap:14px">
+      <div class="field"><label for="empresaNome">Nome</label><input type="text" id="empresaNome" required></div>
+      <div class="field" id="empresaAtivoWrap" style="display:none">
+        <label>Situação</label>
+        <div class="s-row present" id="empresaAtivoRow" style="padding:9px 0"><span class="s-name">Ativo</span><span class="switch" id="empresaAtivoSwitch"></span></div>
+      </div>
+      <button type="submit" class="btn primary big">Salvar</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===== MODAL TURMA ===== -->
 <div class="modal-overlay" id="modalTurma">
   <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
@@ -557,6 +590,9 @@ body.authed #loginGate{display:none}
     <form id="turmaForm" style="padding:0 22px 22px;display:flex;flex-direction:column;gap:14px">
       <div class="field"><label for="turmaModalidade">Modalidade</label><select id="turmaModalidade" required></select></div>
       <div class="field"><label for="turmaHorario">Horário</label><input type="time" id="turmaHorario" required></div>
+      <div class="field"><label for="turmaEmpresa">Empresa</label>
+        <select id="turmaEmpresa" required></select>
+      </div>
       <div class="field"><label for="turmaSetor">Setor</label>
         <select id="turmaSetor" required></select>
       </div>
