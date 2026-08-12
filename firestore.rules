@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /alunos/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.ativo is bool;
+      allow delete: if signedIn();
+    }
+
+    match /turmas/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.modalidade is string
+        && request.resource.data.horario is string
+        && request.resource.data.diasSemana is list
+        && request.resource.data.setor is string
+        && request.resource.data.capacidade is number
+        && request.resource.data.alunoIds is list
+        && request.resource.data.ativa is bool;
+      allow delete: if signedIn();
+    }
+
+    match /presencas/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.turmaId is string
+        && request.resource.data.data is string
+        && request.resource.data.presentes is list;
+      allow delete: if signedIn();
+    }
+
+    // Nega qualquer outro caminho não listado explicitamente acima.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
