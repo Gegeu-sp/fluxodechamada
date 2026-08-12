@@ -1,10 +1,12 @@
-// Configuração do Firebase — PREENCHER com os valores reais do Console:
+// Modelo de configuração do Firebase.
+//
+// Copie este arquivo para "firebase-config.js" (mesma pasta) e preencha com
+// os valores reais do Console:
 // https://console.firebase.google.com/project/fluxo-aula/settings/general
 // (Configurações do projeto > Seus apps > app Web > SDK setup and configuration > Config)
 //
-// A apiKey de um app Web do Firebase NÃO é segredo — pode ficar neste arquivo
-// commitado normalmente. A segurança real vem das Firestore Security Rules
-// (ver firestore.rules), não de esconder esta config.
+// "firebase-config.js" está no .gitignore e nunca é commitado — apenas este
+// modelo (com valores de exemplo) fica versionado.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';

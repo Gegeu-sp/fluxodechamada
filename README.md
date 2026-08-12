@@ -30,7 +30,8 @@ Dashboard de controle de presença para aulas de estúdio/academia (Yoga, Labora
 ├── firestore.indexes.json     # Índices do Firestore
 └── js/
     ├── main.js                # Ponto de entrada: inicializa autenticação e telas
-    ├── firebase-config.js     # Configuração e inicialização do Firebase
+    ├── firebase-config.example.js  # Modelo de configuração do Firebase (versionado)
+    ├── firebase-config.js     # Configuração real do Firebase (local, fora do controle de versão)
     ├── auth.js                # Login, logout e observação do estado de sessão
     ├── data.js                # Acesso ao Firestore (turmas, alunos, presenças)
     ├── ui-presenca.js         # Tela de presença do dia
@@ -58,7 +59,8 @@ Antes de abrir a aplicação, configure o Firebase conforme a seção abaixo.
 2. Em **Authentication → Sign-in method**, habilite o provedor **E-mail/senha**.
 3. Em **Authentication → Users**, crie manualmente as contas que terão acesso ao sistema.
 4. Em **Firestore Database**, crie o banco de dados (modo produção).
-5. Em **Configurações do projeto → Seus apps**, adicione um app Web e copie os valores de configuração para `js/firebase-config.js`:
+5. Em **Configurações do projeto → Seus apps**, adicione um app Web e copie os valores de configuração.
+6. Duplique `js/firebase-config.example.js` como `js/firebase-config.js` e preencha com os valores reais:
 
 ```js
 const firebaseConfig = {
@@ -71,7 +73,9 @@ const firebaseConfig = {
 };
 ```
 
-6. Verifique se o ID do projeto em `.firebaserc` corresponde ao ID real do seu projeto Firebase.
+`js/firebase-config.js` está no `.gitignore` e não é versionado — cada ambiente (local ou de outro colaborador) mantém sua própria cópia.
+
+7. Verifique se o ID do projeto em `.firebaserc` corresponde ao ID real do seu projeto Firebase.
 
 ## Deploy
 
