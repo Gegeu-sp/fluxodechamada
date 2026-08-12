@@ -1,6 +1,6 @@
 import { $, cap, fmt, countUp, todayStr, monthDays, pad2 } from './utils.js';
 import { MODS, MOD_KEYS, MONTHS_PT } from './constants.js';
-import { getPresencasEntre, listTurmas } from './data.js';
+import { getPresencasEntre, listTurmas, listSetores, countAtendidos } from './data.js';
 
 const state = { month: todayStr().slice(0, 7), aModality: 'all', aSector: 'all' };
 let charts = null, chartsInit = false;
@@ -33,6 +33,13 @@ function wireChips(containerId, cb) {
   });
 }
 
+async function renderSectorChips() {
+  const setores = await listSetores();
+  const options = [{ id: 'all', nome: 'Todos os setores' }, ...setores.filter(s => s.ativo !== false)];
+  $('fSectorA').innerHTML = options.map(o =>
+    `<button class="chip ${o.id === state.aSector ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
+}
+
 async function analyticsData() {
   const ym = state.month, [year, mon] = ym.split('-').map(Number);
   const t = todayStr();
@@ -46,11 +53,11 @@ async function analyticsData() {
   const turmaCapMap = new Map(turmas.map(tu => [tu.id, tu.capacidade]));
 
   const dateSum = {};
-  yearCurDocs.forEach(p => { dateSum[p.data] = (dateSum[p.data] || 0) + (p.presentes ? p.presentes.length : 0); });
+  yearCurDocs.forEach(p => { dateSum[p.data] = (dateSum[p.data] || 0) + countAtendidos(p.checkin); });
   const datesWithRecord = new Set(yearCurDocs.map(p => p.data));
 
   const dateSumPrev = {};
-  yearPrevDocs.forEach(p => { dateSumPrev[p.data] = (dateSumPrev[p.data] || 0) + (p.presentes ? p.presentes.length : 0); });
+  yearPrevDocs.forEach(p => { dateSumPrev[p.data] = (dateSumPrev[p.data] || 0) + countAtendidos(p.checkin); });
 
   const mDays = monthDays(ym);
   const mDaysSet = new Set(mDays);
@@ -75,7 +82,7 @@ async function analyticsData() {
     let p = 0, cpVal = 0;
     yearCurDocs.forEach(doc => {
       if (doc.modalidade === id && mDaysSet.has(doc.data)) {
-        p += doc.presentes ? doc.presentes.length : 0;
+        p += countAtendidos(doc.checkin);
         cpVal += turmaCapMap.get(doc.turmaId) || 0;
       }
     });
@@ -107,6 +114,7 @@ function donutLabelFn(d) { return function (c) { const x = d.donut[c.dataIndex];
 function donutAfterFn(d) { return function (c) { const x = d.donut[c.dataIndex]; return ` Ocupação: ${x.cp ? Math.round(x.p / x.cp * 100) : 0}%`; }; }
 
 export async function renderCharts() {
+  await renderSectorChips();
   const d = await analyticsData();
 
   countUp($('kTotal'), d.totalCur);

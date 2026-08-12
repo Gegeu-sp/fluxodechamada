@@ -1,44 +1,83 @@
-# Fluxo-Aula · Presença+
+<div align="center">
 
-Dashboard de controle de presença para aulas de estúdio/academia (Yoga, Laboral, Pilates, Dança e Funcional), com cadastro de turmas e alunos, registro diário de presença e análise gráfica dos dados — tudo com persistência real em nuvem.
+# Fluxo-Aula
+
+### Presença+ — controle de presença inteligente para estúdios e academias
+
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)](#tecnologias)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)](#tecnologias)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](#tecnologias)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)](#tecnologias)
+[![Firestore](https://img.shields.io/badge/Cloud%20Firestore-039BE5?style=flat-square&logo=firebase&logoColor=white)](#tecnologias)
+[![Status](https://img.shields.io/badge/status-em%20desenvolvimento-blue?style=flat-square)](#roadmap)
+[![Licença](https://img.shields.io/badge/licença-todos%20os%20direitos%20reservados-lightgrey?style=flat-square)](#licença)
+
+</div>
+
+---
+
+## Sobre o projeto
+
+**Fluxo-Aula** é uma plataforma web para estúdios e academias controlarem, em tempo real, a presença dos alunos em suas turmas — substituindo planilhas e cadernos de chamada por um fluxo digital simples, rápido e auditável.
+
+Professores registram a presença de cada aula em segundos; gestores acompanham indicadores de ocupação, frequência e engajamento por modalidade, setor e período, com dados reais armazenados em nuvem — não estimativas.
+
+O produto nasceu com o "Presença+", um protótipo de alta fidelidade validado com o usuário final, e evoluiu para uma aplicação com autenticação, banco de dados e regras de segurança em produção.
+
+## Sumário
+
+- [Funcionalidades](#funcionalidades)
+- [Tecnologias](#tecnologias)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Configuração do Firebase](#configuração-do-firebase)
+- [Deploy](#deploy)
+- [Modelo de dados](#modelo-de-dados-firestore)
+- [Roadmap](#roadmap)
+- [Autor](#autor)
+- [Licença](#licença)
 
 ## Funcionalidades
 
-- **Login por conta autorizada** — acesso restrito a contas criadas previamente, sem autocadastro público.
-- **Cadastro de turmas** — modalidade, horário, dias da semana, setor e capacidade.
-- **Cadastro e matrícula de alunos** — vínculo de alunos às turmas em que participam.
-- **Presença do dia** — visualização das turmas do dia, com filtros por data, modalidade e setor, e registro de presença por aluno.
-- **Análise gráfica** — indicadores (KPIs) e gráficos de presenças diárias, comparativo anual e ocupação por modalidade.
-- **Layout responsivo** — adaptado para desktop, tablet e celular.
+| | |
+|---|---|
+| 🔐 **Acesso controlado** | Login por conta autorizada (e-mail/senha); sem autocadastro público — contas são provisionadas pela administração. |
+| 🗂️ **Cadastro de turmas** | Modalidade, horário, dias da semana, setor e capacidade de cada turma recorrente. |
+| 🧑‍🤝‍🧑 **Cadastro e matrícula de alunos** | Vínculo de alunos às turmas em que participam, com histórico preservado mesmo após desativação. |
+| ✅ **Presença do dia** | Turmas do dia filtráveis por data, modalidade e setor, com registro de presença individual em poucos toques. |
+| 📊 **Análise gráfica** | Indicadores e gráficos de presença diária, comparativo anual e ocupação por modalidade, com dados reais. |
+| 📱 **Responsivo** | Interface adaptada para desktop, tablet e celular. |
 
 ## Tecnologias
 
-- **HTML, CSS e JavaScript puro**, com módulos ES nativos (`import`/`export`) — sem framework e sem etapa de build.
-- **Firebase Authentication** — autenticação por e-mail e senha.
-- **Cloud Firestore** — banco de dados em nuvem para turmas, alunos e presenças.
-- **Firebase Hosting** — hospedagem do site.
-- **Chart.js** — geração dos gráficos da aba de análise.
+| Camada | Tecnologia |
+|---|---|
+| Front-end | HTML5, CSS3 e JavaScript (ES Modules nativos) — sem framework, sem etapa de build |
+| Autenticação | Firebase Authentication (e-mail/senha) |
+| Banco de dados | Cloud Firestore |
+| Hospedagem | Firebase Hosting |
+| Visualização de dados | Chart.js |
 
 ## Estrutura do projeto
 
 ```
 .
-├── index.html                 # Estrutura HTML e estilos da aplicação
-├── firebase.json              # Configuração de Hosting e Firestore
-├── .firebaserc                # Alias do projeto Firebase
-├── firestore.rules            # Regras de segurança do banco de dados
-├── firestore.indexes.json     # Índices do Firestore
+├── index.html                        # Estrutura HTML e estilos da aplicação
+├── firebase.json                     # Configuração de Hosting e Firestore
+├── .firebaserc                       # Alias do projeto Firebase
+├── firestore.rules                   # Regras de segurança do banco de dados
+├── firestore.indexes.json            # Índices do Firestore
 └── js/
-    ├── main.js                # Ponto de entrada: inicializa autenticação e telas
-    ├── firebase-config.example.js  # Modelo de configuração do Firebase (versionado)
-    ├── firebase-config.js     # Configuração real do Firebase (local, fora do controle de versão)
-    ├── auth.js                # Login, logout e observação do estado de sessão
-    ├── data.js                # Acesso ao Firestore (turmas, alunos, presenças)
-    ├── ui-presenca.js         # Tela de presença do dia
-    ├── ui-analise.js          # Tela de análise gráfica
-    ├── ui-cadastros.js        # Tela de cadastro de turmas e alunos
-    ├── constants.js           # Modalidades, cores e demais constantes
-    └── utils.js                # Funções utilitárias compartilhadas
+    ├── main.js                       # Ponto de entrada: inicializa autenticação e telas
+    ├── firebase-config.example.js    # Modelo de configuração do Firebase (versionado)
+    ├── firebase-config.js            # Configuração real do Firebase (local, fora do controle de versão)
+    ├── auth.js                       # Login, logout e observação do estado de sessão
+    ├── data.js                       # Acesso ao Firestore (turmas, alunos, presenças)
+    ├── ui-presenca.js                # Tela de presença do dia
+    ├── ui-analise.js                 # Tela de análise gráfica
+    ├── ui-cadastros.js               # Tela de cadastro de turmas e alunos
+    ├── constants.js                  # Modalidades, cores e demais constantes
+    └── utils.js                      # Funções utilitárias compartilhadas
 ```
 
 ## Como rodar localmente
@@ -62,18 +101,18 @@ Antes de abrir a aplicação, configure o Firebase conforme a seção abaixo.
 5. Em **Configurações do projeto → Seus apps**, adicione um app Web e copie os valores de configuração.
 6. Duplique `js/firebase-config.example.js` como `js/firebase-config.js` e preencha com os valores reais:
 
-```js
-const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "...",
-};
-```
+   ```js
+   const firebaseConfig = {
+     apiKey: "...",
+     authDomain: "...",
+     projectId: "...",
+     storageBucket: "...",
+     messagingSenderId: "...",
+     appId: "...",
+   };
+   ```
 
-`js/firebase-config.js` está no `.gitignore` e não é versionado — cada ambiente (local ou de outro colaborador) mantém sua própria cópia.
+   > `js/firebase-config.js` está no `.gitignore` e não é versionado — cada ambiente (local ou de outro colaborador) mantém sua própria cópia.
 
 7. Verifique se o ID do projeto em `.firebaserc` corresponde ao ID real do seu projeto Firebase.
 
@@ -95,6 +134,15 @@ firebase deploy --only hosting
 | `presencas` | Registro de presença por turma e data | `turmaId`, `data`, `presentes`, `modalidade`, `setor`, `atualizadoPor`, `atualizadoEm` |
 
 O acesso a todas as coleções exige autenticação, conforme definido em `firestore.rules`.
+
+## Roadmap
+
+- [x] Autenticação e controle de acesso
+- [x] Cadastro de turmas e alunos
+- [x] Registro de presença com persistência em nuvem
+- [x] Análise gráfica com dados reais
+- [ ] Provisionamento do ambiente de produção (contas, banco e deploy finais)
+- [ ] Exportação de relatórios de presença
 
 ## Autor
 

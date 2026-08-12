@@ -137,6 +137,25 @@ body.no-scroll{overflow:hidden}
   background:var(--lav-soft);color:#6A59C9;border-radius:99px;padding:10px 20px;transition:.2s}
 .empty button:hover{background:var(--lav);color:#fff}
 
+/* ============ SEMANA ============ */
+.grid-semana{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+.semana-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.semana-col-head{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:4px 2px}
+.semana-col-head.today{color:var(--aqua-deep)}
+.semana-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;cursor:pointer;
+  transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column;gap:4px}
+.semana-item:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.semana-item .si-top{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800}
+.semana-item .si-mod{font-size:11px;color:var(--muted);font-weight:600}
+.semana-empty{font-size:11.5px;color:var(--muted);text-align:center;padding:14px 4px}
+
+/* check-in de 3 estados, reaproveita .chip/.chip.active */
+.checkin-chips{gap:6px;margin-left:0;min-width:0}
+.checkin-chips .chip{padding:6px 10px;font-size:11.5px}
+.checkin-chips .chip[data-status="faltou"].active{background:var(--red-soft);color:#D0483F;border-color:transparent;box-shadow:none}
+.checkin-chips .chip[data-status="foi_nao_fez"].active{background:var(--yellow-soft);color:#B07E12;border-color:transparent;box-shadow:none}
+.checkin-chips .chip[data-status="foi_fez"].active{background:var(--aqua-soft);color:var(--aqua-deep);border-color:transparent;box-shadow:none}
+
 /* ============ ANALYTICS ============ */
 .charts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .chart-card{padding:22px;animation:cardIn .5s backwards}
@@ -195,11 +214,11 @@ body.no-scroll{overflow:hidden}
 .m-search{flex:1;min-width:140px;font-family:inherit;font-size:13px;font-weight:600;border:1px solid var(--border);
   background:#F6F9F8;border-radius:99px;padding:10px 16px;outline:none;transition:.2s}
 .m-search:focus{border-color:var(--aqua);box-shadow:0 0 0 3px rgba(62,198,168,.15)}
-.student-list{list-style:none;overflow-y:auto;padding:4px 14px;flex:1;min-height:120px}
+.student-list{list-style:none;overflow-y:auto;padding:4px 14px;flex:1;min-height:120px;min-width:0}
 .s-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:14px;cursor:pointer;transition:background .18s;user-select:none}
 .s-row:hover{background:#F5F9F8}
 .s-ava{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:12.5px;font-weight:800;flex:none}
-.s-name{flex:1;font-size:14px;font-weight:600}
+.s-name{flex:1;min-width:0;font-size:14px;font-weight:600}
 .s-row.present .s-name{font-weight:700}
 .switch{width:44px;height:26px;border-radius:99px;background:#E2E9E7;position:relative;flex:none;transition:background .25s}
 .switch::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;
@@ -225,11 +244,17 @@ footer{text-align:center;margin-top:44px;font-size:12px;color:var(--muted);font-
   .donut-wrap{flex-direction:column}
   .donut-canvas{width:100%}
   .chips{margin-left:0}
+  .grid-semana{grid-template-columns:repeat(4,1fr)}
 }
 @media(max-width:520px){
   .stats-row{grid-template-columns:1fr}
   .tab{padding:10px 15px;font-size:13px}
   .topbar{justify-content:center;text-align:center}
+  .grid-semana{grid-template-columns:1fr}
+  .checkin-chips .chip{padding:5px 8px;font-size:10.5px}
+  .s-row{flex-wrap:wrap}
+  .tabs{max-width:100%;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
 }
 
 /* ============ LOGIN GATE ============ */
@@ -352,19 +377,21 @@ body.authed #loginGate{display:none}
     </div>
 
     <div class="card toolbar">
+      <div class="chips" id="fView">
+        <button class="chip active" data-v="dia">Dia</button>
+        <button class="chip" data-v="semana">Semana</button>
+      </div>
       <span class="lbl">Data</span>
       <input type="date" id="fDate">
       <span class="lbl">Modalidade</span>
       <select id="fMod"></select>
       <div class="chips" id="fSector">
         <button class="chip active" data-v="all">Todos os setores</button>
-        <button class="chip" data-v="A">Setor A</button>
-        <button class="chip" data-v="B">Setor B</button>
-        <button class="chip" data-v="C">Setor C</button>
       </div>
     </div>
 
     <div class="grid-classes" id="classList"></div>
+    <div class="grid-semana" id="weekView" style="display:none"></div>
   </section>
 
   <!-- ===== ABA: ANÁLISE ===== -->
@@ -395,9 +422,6 @@ body.authed #loginGate{display:none}
       <select id="fModA"></select>
       <div class="chips" id="fSectorA">
         <button class="chip active" data-v="all">Todos os setores</button>
-        <button class="chip" data-v="A">Setor A</button>
-        <button class="chip" data-v="B">Setor B</button>
-        <button class="chip" data-v="C">Setor C</button>
       </div>
     </div>
 
@@ -435,6 +459,7 @@ body.authed #loginGate{display:none}
     <div class="tabs sub-tabs" role="tablist">
       <button class="tab active" data-subtab="alunos" role="tab">Alunos</button>
       <button class="tab" data-subtab="turmas" role="tab">Turmas</button>
+      <button class="tab" data-subtab="setores" role="tab">Setores</button>
     </div>
 
     <div id="cad-alunos">
@@ -450,6 +475,14 @@ body.authed #loginGate{display:none}
         <button class="btn primary" id="btnNovaTurma" style="margin-left:auto">+ Nova turma</button>
       </div>
       <div class="grid-turmas" id="turmasList"></div>
+    </div>
+
+    <div id="cad-setores" style="display:none">
+      <div class="card cad-toolbar">
+        <input class="m-search" id="setorSearch" placeholder="Buscar setor…">
+        <button class="btn primary" id="btnNovoSetor" style="margin-left:auto">+ Novo setor</button>
+      </div>
+      <div class="card" id="setoresList"></div>
     </div>
   </section>
 
@@ -469,8 +502,8 @@ body.authed #loginGate{display:none}
       <div class="bar"><i id="mBar" style="width:0%;background:var(--aqua)"></i></div>
     </div>
     <div class="modal-actions">
-      <button class="btn primary" id="btnAll">✓ Marcar todos</button>
-      <button class="btn ghost" id="btnNone">Desmarcar todos</button>
+      <button class="btn primary" id="btnAllFez">✓ Todos fizeram</button>
+      <button class="btn ghost" id="btnAllFaltou">Todos faltaram</button>
       <input class="m-search" id="mSearch" placeholder="Buscar aluno…">
     </div>
     <ul class="student-list" id="mList"></ul>
@@ -496,6 +529,24 @@ body.authed #loginGate{display:none}
   </div>
 </div>
 
+<!-- ===== MODAL SETOR ===== -->
+<div class="modal-overlay" id="modalSetor">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+    <div class="modal-head">
+      <div><h3 id="setorModalTitle">Novo setor</h3></div>
+      <button class="btn-close" id="btnCloseSetor" aria-label="Fechar">✕</button>
+    </div>
+    <form id="setorForm" style="padding:0 22px 22px;display:flex;flex-direction:column;gap:14px">
+      <div class="field"><label for="setorNome">Nome</label><input type="text" id="setorNome" required></div>
+      <div class="field" id="setorAtivoWrap" style="display:none">
+        <label>Situação</label>
+        <div class="s-row present" id="setorAtivoRow" style="padding:9px 0"><span class="s-name">Ativo</span><span class="switch" id="setorAtivoSwitch"></span></div>
+      </div>
+      <button type="submit" class="btn primary big">Salvar</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===== MODAL TURMA ===== -->
 <div class="modal-overlay" id="modalTurma">
   <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
@@ -507,7 +558,7 @@ body.authed #loginGate{display:none}
       <div class="field"><label for="turmaModalidade">Modalidade</label><select id="turmaModalidade" required></select></div>
       <div class="field"><label for="turmaHorario">Horário</label><input type="time" id="turmaHorario" required></div>
       <div class="field"><label for="turmaSetor">Setor</label>
-        <select id="turmaSetor" required><option value="A">Setor A</option><option value="B">Setor B</option><option value="C">Setor C</option></select>
+        <select id="turmaSetor" required></select>
       </div>
       <div class="field"><label for="turmaCapacidade">Capacidade</label><input type="number" id="turmaCapacidade" min="1" value="20" required></div>
       <div class="field"><label>Dias da semana</label><div class="day-toggle" id="turmaDias"></div></div>
