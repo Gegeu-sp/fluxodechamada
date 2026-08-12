@@ -10,6 +10,16 @@
       "*.md",
       "firestore.rules",
       "firestore.indexes.json"
+    ],
+    "headers": [
+      {
+        "source": "**/*.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }]
+      },
+      {
+        "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }]
+      }
     ]
   },
   "firestore": {
