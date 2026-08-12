@@ -8,7 +8,6 @@
       ".specify/**",
       "specs/**",
       "*.md",
-      "js/firebase-config.js",
       "firestore.rules",
       "firestore.indexes.json"
     ]
