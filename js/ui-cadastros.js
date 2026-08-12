@@ -1,16 +1,18 @@
 import { $, initials, toast } from './utils.js';
 import { MODS, MOD_KEYS, AV_COLORS, WEEKDAYS_PT } from './constants.js';
 import {
-  listAlunos, listTurmas, listSetores, createAluno, updateAluno,
-  createTurma, updateTurma, matricular, createSetor, updateSetor,
+  listAlunos, listTurmas, listSetores, listEmpresas, createAluno, updateAluno,
+  createTurma, updateTurma, matricular, createSetor, updateSetor, createEmpresa, updateEmpresa,
 } from './data.js';
 
 let alunosCache = [];
 let turmasCache = [];
 let setoresCache = [];
+let empresasCache = [];
 let editingAlunoId = null;
 let editingTurmaId = null;
 let editingSetorId = null;
+let editingEmpresaId = null;
 let turmaDiasSelecionados = new Set();
 let matriculaTurma = null;
 let matriculaSelecionados = new Set();
@@ -20,24 +22,30 @@ export async function initCadastros() {
   wireAlunoModal();
   wireTurmaModal();
   wireSetorModal();
+  wireEmpresaModal();
   wireMatriculaModal();
   $('alunoSearch').addEventListener('input', () => renderAlunosList());
   $('setorSearch').addEventListener('input', () => renderSetoresList());
+  $('empresaSearch').addEventListener('input', () => renderEmpresasList());
   await refreshCadastros();
 }
 
 export async function refreshCadastros() {
-  [alunosCache, turmasCache, setoresCache] = await Promise.all([listAlunos(true), listTurmas(true), listSetores(true)]);
+  [alunosCache, turmasCache, setoresCache, empresasCache] =
+    await Promise.all([listAlunos(true), listTurmas(true), listSetores(true), listEmpresas(true)]);
   renderAlunosList();
   renderTurmasList();
   renderSetoresList();
+  renderEmpresasList();
   populateTurmaSetorSelect();
+  populateTurmaEmpresaSelect();
 }
 
 function setorNome(id) { return (setoresCache.find(s => s.id === id) || {}).nome || id; }
+function empresaNome(id) { return (empresasCache.find(e => e.id === id) || {}).nome || id || '—'; }
 
 function wireSubTabs() {
-  const panels = { alunos: 'cad-alunos', turmas: 'cad-turmas', setores: 'cad-setores' };
+  const panels = { alunos: 'cad-alunos', turmas: 'cad-turmas', setores: 'cad-setores', empresas: 'cad-empresas' };
   document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
@@ -115,7 +123,7 @@ function renderTurmasList() {
     return `<article class="card class-card" data-id="${t.id}">
       <div class="cc-top">
         <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
-        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${setorNome(t.setor)} · ${t.capacidade} vagas · ${(t.alunoIds || []).length} matriculados</p></div>
+        <div class="cc-info"><h4>${m.name}</h4><p>${empresaNome(t.empresa)} · Setor ${setorNome(t.setor)} · ${t.capacidade} vagas · ${(t.alunoIds || []).length} matriculados</p></div>
         <span class="time-chip">${t.horario}</span>
       </div>
       <div class="dias-row">${diasChips}</div>
@@ -150,6 +158,19 @@ function populateTurmaSetorSelect(manterId) {
   if (manterId) sel.value = manterId;
 }
 
+function populateTurmaEmpresaSelect(manterId) {
+  const sel = $('turmaEmpresa');
+  const ativas = empresasCache.filter(e => e.ativo !== false);
+  sel.innerHTML = ativas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+  // Se a turma em edição usa uma empresa desativada/removida da lista, mantém a opção pra não perder a seleção.
+  if (manterId && !ativas.some(e => e.id === manterId)) {
+    const opt = document.createElement('option');
+    opt.value = manterId; opt.textContent = empresaNome(manterId);
+    sel.appendChild(opt);
+  }
+  if (manterId) sel.value = manterId;
+}
+
 function wireTurmaModal() {
   $('turmaModalidade').innerHTML = MOD_KEYS.map(k => `<option value="${k}">${MODS[k].emoji} ${MODS[k].name}</option>`).join('');
   $('turmaDias').innerHTML = WEEKDAYS_PT.map((d, i) => `<button type="button" data-dia="${i}">${d}</button>`).join('');
@@ -170,6 +191,7 @@ function wireTurmaModal() {
       modalidade: $('turmaModalidade').value,
       horario: $('turmaHorario').value,
       setor: $('turmaSetor').value,
+      empresa: $('turmaEmpresa').value,
       capacidade: Number($('turmaCapacidade').value) || 1,
       diasSemana: [...turmaDiasSelecionados].sort(),
     };
@@ -192,6 +214,7 @@ function openTurmaModal(turma) {
   $('turmaModalidade').value = turma ? turma.modalidade : MOD_KEYS[0];
   $('turmaHorario').value = turma ? turma.horario : '08:00';
   populateTurmaSetorSelect(turma ? turma.setor : null);
+  populateTurmaEmpresaSelect(turma ? turma.empresa : null);
   $('turmaCapacidade').value = turma ? turma.capacidade : 20;
   turmaDiasSelecionados = new Set(turma ? (turma.diasSemana || []) : []);
   $('turmaDias').querySelectorAll('button[data-dia]').forEach(b => b.classList.toggle('on', turmaDiasSelecionados.has(Number(b.dataset.dia))));
@@ -224,7 +247,7 @@ function wireMatriculaModal() {
 function openMatriculaModal(turma) {
   matriculaTurma = turma;
   matriculaSelecionados = new Set(turma.alunoIds || []);
-  $('matriculaSub').textContent = `${MODS[turma.modalidade]?.name || turma.modalidade} ${turma.horario} · Setor ${setorNome(turma.setor)}`;
+  $('matriculaSub').textContent = `${MODS[turma.modalidade]?.name || turma.modalidade} ${turma.horario} · ${empresaNome(turma.empresa)} · Setor ${setorNome(turma.setor)}`;
   $('matriculaSearch').value = '';
   renderMatriculaList();
   $('modalMatricula').classList.add('show');
@@ -295,3 +318,54 @@ function openSetorModal(setor) {
   $('modalSetor').classList.add('show');
 }
 function closeSetorModal() { $('modalSetor').classList.remove('show'); }
+
+// ================== EMPRESAS ==================
+function renderEmpresasList() {
+  const q = ($('empresaSearch').value || '').toLowerCase().trim();
+  const rows = empresasCache
+    .filter(e => !q || e.nome.toLowerCase().includes(q))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  $('empresasList').innerHTML = rows.length ? rows.map(e => {
+    return `<div class="aluno-row" data-id="${e.id}">
+      <span class="s-name">${e.nome}</span>
+      <span class="status-chip ${e.ativo ? 'status-on' : 'status-off'}">${e.ativo ? 'Ativo' : 'Inativo'}</span>
+      <button class="btn ghost" data-edit="${e.id}">Editar</button>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="big">🏢</div><h3>Nenhuma empresa cadastrada</h3><p>Clique em "Nova empresa" para começar.</p></div>`;
+
+  $('empresasList').querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openEmpresaModal(empresasCache.find(e => e.id === btn.dataset.edit)));
+  });
+}
+
+function wireEmpresaModal() {
+  $('btnNovaEmpresa').addEventListener('click', () => openEmpresaModal(null));
+  $('btnCloseEmpresa').addEventListener('click', closeEmpresaModal);
+  $('modalEmpresa').addEventListener('click', e => { if (e.target === $('modalEmpresa')) closeEmpresaModal(); });
+  $('empresaAtivoRow').addEventListener('click', () => $('empresaAtivoRow').classList.toggle('present'));
+  $('empresaForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = $('empresaNome').value.trim();
+    if (!nome) return;
+    if (editingEmpresaId) {
+      await updateEmpresa(editingEmpresaId, { nome, ativo: $('empresaAtivoRow').classList.contains('present') });
+      toast('Empresa atualizada');
+    } else {
+      await createEmpresa({ nome });
+      toast('Empresa criada');
+    }
+    closeEmpresaModal();
+    await refreshCadastros();
+  });
+}
+
+function openEmpresaModal(empresa) {
+  editingEmpresaId = empresa ? empresa.id : null;
+  $('empresaModalTitle').textContent = empresa ? 'Editar empresa' : 'Nova empresa';
+  $('empresaNome').value = empresa ? empresa.nome : '';
+  $('empresaAtivoWrap').style.display = empresa ? '' : 'none';
+  $('empresaAtivoRow').classList.toggle('present', empresa ? empresa.ativo !== false : true);
+  $('modalEmpresa').classList.add('show');
+}
+function closeEmpresaModal() { $('modalEmpresa').classList.remove('show'); }

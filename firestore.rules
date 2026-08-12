@@ -25,6 +25,15 @@ service cloud.firestore {
       allow delete: if signedIn();
     }
 
+    match /empresas/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.ativo is bool;
+      allow delete: if signedIn();
+    }
+
     match /turmas/{id} {
       allow read: if signedIn();
       allow create, update: if signedIn()
@@ -32,6 +41,7 @@ service cloud.firestore {
         && request.resource.data.horario is string
         && request.resource.data.diasSemana is list
         && request.resource.data.setor is string
+        && request.resource.data.empresa is string
         && request.resource.data.capacidade is number
         && request.resource.data.alunoIds is list
         && request.resource.data.ativa is bool;

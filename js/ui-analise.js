@@ -1,8 +1,8 @@
 import { $, cap, fmt, countUp, todayStr, monthDays, pad2 } from './utils.js';
 import { MODS, MOD_KEYS, MONTHS_PT } from './constants.js';
-import { getPresencasEntre, listTurmas, listSetores, countAtendidos } from './data.js';
+import { getPresencasEntre, listTurmas, listSetores, listEmpresas, countAtendidos } from './data.js';
 
-const state = { month: todayStr().slice(0, 7), aModality: 'all', aSector: 'all' };
+const state = { month: todayStr().slice(0, 7), aModality: 'all', aSector: 'all', aEmpresa: 'all' };
 let charts = null, chartsInit = false;
 
 export async function initAnalise() {
@@ -12,6 +12,7 @@ export async function initAnalise() {
   $('fModA').addEventListener('change', e => { state.aModality = e.target.value; renderCharts(); });
 
   wireChips('fSectorA', v => { state.aSector = v; renderCharts(); });
+  wireChips('fEmpresaA', v => { state.aEmpresa = v; renderCharts(); });
 
   const sel = $('fMonth'), now = new Date();
   for (let i = 0; i < 18; i++) {
@@ -40,10 +41,17 @@ async function renderSectorChips() {
     `<button class="chip ${o.id === state.aSector ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
 }
 
+async function renderEmpresaChips() {
+  const empresas = await listEmpresas();
+  const options = [{ id: 'all', nome: 'Todas as empresas' }, ...empresas.filter(e => e.ativo !== false)];
+  $('fEmpresaA').innerHTML = options.map(o =>
+    `<button class="chip ${o.id === state.aEmpresa ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
+}
+
 async function analyticsData() {
   const ym = state.month, [year, mon] = ym.split('-').map(Number);
   const t = todayStr();
-  const filter = { modalidade: state.aModality, setor: state.aSector };
+  const filter = { modalidade: state.aModality, setor: state.aSector, empresa: state.aEmpresa };
 
   const [yearCurDocs, yearPrevDocs, turmas] = await Promise.all([
     getPresencasEntre(`${year}-01-01`, `${year}-12-31`, filter),
@@ -114,7 +122,7 @@ function donutLabelFn(d) { return function (c) { const x = d.donut[c.dataIndex];
 function donutAfterFn(d) { return function (c) { const x = d.donut[c.dataIndex]; return ` Ocupação: ${x.cp ? Math.round(x.p / x.cp * 100) : 0}%`; }; }
 
 export async function renderCharts() {
-  await renderSectorChips();
+  await Promise.all([renderSectorChips(), renderEmpresaChips()]);
   const d = await analyticsData();
 
   countUp($('kTotal'), d.totalCur);

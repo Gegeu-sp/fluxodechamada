@@ -1,9 +1,9 @@
 import { $, toast, countUp, initials, todayStr } from './utils.js';
 import { MODS, MOD_KEYS, WEEKDAYS_PT, AV_COLORS, CHECKIN_STATUS } from './constants.js';
-import { getAulasDoDia, getAulasDaSemana, savePresenca, listSetores, isAtendido } from './data.js';
+import { getAulasDoDia, getAulasDaSemana, savePresenca, listSetores, listEmpresas, isAtendido } from './data.js';
 import { auth } from './firebase-config.js';
 
-const state = { date: todayStr(), modality: 'all', sector: 'all', view: 'dia' };
+const state = { date: todayStr(), modality: 'all', sector: 'all', empresa: 'all', view: 'dia' };
 let currentClasses = [];
 let currentWeekItems = new Map(); // key: `${turmaId}_${date}` -> aula
 let activeClass = null;
@@ -20,6 +20,7 @@ export async function initPresenca() {
   $('fMod').addEventListener('change', e => { state.modality = e.target.value; renderDashboard(); });
 
   wireChips('fSector', v => { state.sector = v; renderDashboard(); });
+  wireChips('fEmpresa', v => { state.empresa = v; renderDashboard(); });
   wireChips('fView', v => { state.view = v; renderDashboard(); });
 
   $('classList').addEventListener('click', e => {
@@ -91,14 +92,22 @@ async function renderSectorChips() {
     `<button class="chip ${o.id === state.sector ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
 }
 
+async function renderEmpresaChips() {
+  const empresas = await listEmpresas();
+  const options = [{ id: 'all', nome: 'Todas as empresas' }, ...empresas.filter(e => e.ativo !== false)];
+  $('fEmpresa').innerHTML = options.map(o =>
+    `<button class="chip ${o.id === state.empresa ? 'active' : ''}" data-v="${o.id}">${o.nome}</button>`).join('');
+}
+
 function matchesFilters(c) {
   return (state.modality === 'all' || c.mod === state.modality) &&
-    (state.sector === 'all' || c.sector === state.sector);
+    (state.sector === 'all' || c.sector === state.sector) &&
+    (state.empresa === 'all' || c.empresa === state.empresa);
 }
 function filteredClasses() { return currentClasses.filter(matchesFilters); }
 
 export async function renderDashboard() {
-  await renderSectorChips();
+  await Promise.all([renderSectorChips(), renderEmpresaChips()]);
   currentClasses = await getAulasDoDia(state.date);
   const list = filteredClasses();
 
@@ -138,7 +147,7 @@ function renderDayGrid(list) {
     return `<article class="class-card" data-id="${c.id}" style="animation-delay:${i * 50}ms">
       <div class="cc-top">
         <div class="mod-badge" style="background:${m.soft}">${m.emoji}</div>
-        <div class="cc-info"><h4>${m.name}</h4><p>Setor ${c.sectorName} · ${c.capacity} vagas</p></div>
+        <div class="cc-info"><h4>${m.name}</h4><p>${c.empresaName} · Setor ${c.sectorName} · ${c.capacity} vagas</p></div>
         <span class="time-chip">${c.time}</span>
       </div>
       <div class="cc-count"><b>${p}</b><span>/ ${c.capacity} presentes</span></div>
@@ -163,7 +172,7 @@ async function renderWeekGrid() {
       const m = MODS[a.mod] || { name: a.mod, emoji: '❓' };
       return `<div class="semana-item" data-key="${a.id}_${a.date}">
         <div class="si-top"><span>${m.emoji}</span><span>${a.time}</span></div>
-        <div class="si-mod">${m.name} · ${a.sectorName}</div>
+        <div class="si-mod">${m.name} · ${a.empresaName}</div>
       </div>`;
     }).join('') : `<div class="semana-empty">Sem aulas</div>`;
     return `<div class="semana-col">
@@ -184,7 +193,7 @@ function openModal(c) {
   const m = MODS[c.mod] || { name: c.mod, emoji: '❓', soft: '#eee' };
   $('mBadge').textContent = m.emoji; $('mBadge').style.background = m.soft;
   $('mTitle').textContent = m.name;
-  $('mSub').textContent = `${c.time} · Setor ${c.sectorName} · ${c.capacity} vagas`;
+  $('mSub').textContent = `${c.time} · ${c.empresaName} · Setor ${c.sectorName} · ${c.capacity} vagas`;
   $('mSearch').value = '';
   $('mPresent').dataset.v = '0';
   renderStudents();
