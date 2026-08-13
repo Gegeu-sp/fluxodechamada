@@ -16,6 +16,9 @@ let editingEmpresaId = null;
 let turmaDiasSelecionados = new Set();
 let matriculaTurma = null;
 let matriculaSelecionados = new Set();
+// Quando empresa/setor é cadastrado de dentro do formulário de turma, guarda
+// qual campo deve receber o item recém-criado já selecionado.
+let inlineTarget = null;
 
 export async function initCadastros() {
   wireSubTabs();
@@ -47,15 +50,18 @@ export async function refreshCadastros() {
   renderTurmasList();
   renderSetoresList();
   renderEmpresasList();
-  populateTurmaSetorSelect();
-  populateTurmaEmpresaSelect();
+  // Preserva o que já estava escolhido: refreshCadastros pode rodar com o
+  // formulário de turma aberto (ao cadastrar empresa/setor por ali mesmo),
+  // e repopular os selects do zero apagaria a seleção em andamento.
+  populateTurmaSetorSelect($('turmaSetor').value || null);
+  populateTurmaEmpresaSelect($('turmaEmpresa').value || null);
 }
 
 function setorNome(id) { return (setoresCache.find(s => s.id === id) || {}).nome || id; }
 function empresaNome(id) { return (empresasCache.find(e => e.id === id) || {}).nome || id || '—'; }
 
 function wireSubTabs() {
-  const panels = { alunos: 'cad-alunos', turmas: 'cad-turmas', setores: 'cad-setores', empresas: 'cad-empresas' };
+  const panels = { alunos: 'cad-alunos', turmas: 'cad-turmas', organizacao: 'cad-organizacao' };
   document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#sec-cadastros .sub-tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
@@ -193,6 +199,11 @@ function wireTurmaModal() {
   $('btnNovaTurma').addEventListener('click', () => openTurmaModal(null));
   $('btnCloseTurma').addEventListener('click', closeTurmaModal);
   $('modalTurma').addEventListener('click', e => { if (e.target === $('modalTurma')) closeTurmaModal(); });
+  // Cadastrar empresa/setor sem sair do formulário da turma: abre o modal por
+  // cima, e ao salvar o item novo já volta selecionado — sem perder o que
+  // estava preenchido aqui.
+  $('btnAddEmpresaInline').addEventListener('click', () => { inlineTarget = 'empresa'; openEmpresaModal(null); });
+  $('btnAddSetorInline').addEventListener('click', () => { inlineTarget = 'setor'; openSetorModal(null); });
   $('turmaAtivaRow').addEventListener('click', () => $('turmaAtivaRow').classList.toggle('present'));
   $('turmaForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -208,13 +219,23 @@ function wireTurmaModal() {
     if (editingTurmaId) {
       payload.ativa = $('turmaAtivaRow').classList.contains('present');
       await updateTurma(editingTurmaId, payload);
+      closeTurmaModal();
+      await refreshCadastros();
       toast('Turma atualizada');
-    } else {
-      await createTurma(payload);
-      toast('Turma criada');
+      return;
     }
+    const novaId = await createTurma(payload);
     closeTurmaModal();
     await refreshCadastros();
+    // Uma turma sem alunos não serve pra nada: em vez de deixar a matrícula
+    // como um passo escondido que o usuário precisa caçar depois, já abre.
+    const nova = turmasCache.find(t => t.id === novaId);
+    if (nova) {
+      openMatriculaModal(nova);
+      toast('Turma criada — agora escolha os alunos');
+    } else {
+      toast('Turma criada');
+    }
   });
 }
 
@@ -307,15 +328,18 @@ function wireSetorModal() {
     e.preventDefault();
     const nome = $('setorNome').value.trim();
     if (!nome) return;
+    let novoId = null;
     if (editingSetorId) {
       await updateSetor(editingSetorId, { nome, ativo: $('setorAtivoRow').classList.contains('present') });
       toast('Setor atualizado');
     } else {
-      await createSetor({ nome });
+      novoId = await createSetor({ nome });
       toast('Setor criado');
     }
+    const voltarPraTurma = inlineTarget === 'setor' && novoId;
     closeSetorModal();
     await refreshCadastros();
+    if (voltarPraTurma) populateTurmaSetorSelect(novoId);
   });
 }
 
@@ -325,9 +349,13 @@ function openSetorModal(setor) {
   $('setorNome').value = setor ? setor.nome : '';
   $('setorAtivoWrap').style.display = setor ? '' : 'none';
   $('setorAtivoRow').classList.toggle('present', setor ? setor.ativo !== false : true);
+  $('modalSetor').classList.toggle('on-top', inlineTarget === 'setor');
   $('modalSetor').classList.add('show');
 }
-function closeSetorModal() { $('modalSetor').classList.remove('show'); }
+function closeSetorModal() {
+  $('modalSetor').classList.remove('show', 'on-top');
+  if (inlineTarget === 'setor') inlineTarget = null;
+}
 
 // ================== EMPRESAS ==================
 function renderEmpresasList() {
@@ -358,15 +386,18 @@ function wireEmpresaModal() {
     e.preventDefault();
     const nome = $('empresaNome').value.trim();
     if (!nome) return;
+    let novoId = null;
     if (editingEmpresaId) {
       await updateEmpresa(editingEmpresaId, { nome, ativo: $('empresaAtivoRow').classList.contains('present') });
       toast('Empresa atualizada');
     } else {
-      await createEmpresa({ nome });
+      novoId = await createEmpresa({ nome });
       toast('Empresa criada');
     }
+    const voltarPraTurma = inlineTarget === 'empresa' && novoId;
     closeEmpresaModal();
     await refreshCadastros();
+    if (voltarPraTurma) populateTurmaEmpresaSelect(novoId);
   });
 }
 
@@ -376,6 +407,10 @@ function openEmpresaModal(empresa) {
   $('empresaNome').value = empresa ? empresa.nome : '';
   $('empresaAtivoWrap').style.display = empresa ? '' : 'none';
   $('empresaAtivoRow').classList.toggle('present', empresa ? empresa.ativo !== false : true);
+  $('modalEmpresa').classList.toggle('on-top', inlineTarget === 'empresa');
   $('modalEmpresa').classList.add('show');
 }
-function closeEmpresaModal() { $('modalEmpresa').classList.remove('show'); }
+function closeEmpresaModal() {
+  $('modalEmpresa').classList.remove('show', 'on-top');
+  if (inlineTarget === 'empresa') inlineTarget = null;
+}

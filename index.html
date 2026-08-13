@@ -268,9 +268,12 @@ body.authed #loginGate{display:none}
 .login-card p.sub{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:22px}
 .field{text-align:left;margin-bottom:14px}
 .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.field input{width:100%;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);
+.field input,.field select{width:100%;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);
   background:#F6F9F8;border:1px solid var(--border);border-radius:12px;padding:11px 14px;outline:none;transition:.2s}
-.field input:focus{border-color:var(--aqua);box-shadow:0 0 0 3px rgba(62,198,168,.16)}
+.field select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:34px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237B8A96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:15px}
+.field input:focus,.field select:focus{border-color:var(--aqua);box-shadow:0 0 0 3px rgba(62,198,168,.16)}
 #loginError{color:var(--red);font-size:12.5px;font-weight:700;margin:-6px 0 12px;min-height:16px}
 .userbox{display:flex;align-items:center;gap:10px}
 .userbox .email{font-size:12.5px;font-weight:700;color:var(--ink);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -282,6 +285,13 @@ body.authed #loginGate{display:none}
 .sub-tabs{display:flex;gap:8px;margin-bottom:18px}
 .cad-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:18px}
 .cad-toolbar .m-search{max-width:280px}
+.cad-block-title{font-size:15px;font-weight:800;margin-bottom:10px}
+.cad-hint{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.field-row{display:flex;gap:8px;align-items:center}
+.field-row select{flex:1;min-width:0}
+.btn-inline-add{flex:none;white-space:nowrap;padding:9px 12px;font-size:12.5px}
+/* Modal aberto por cima de outro (ex.: cadastrar empresa sem sair do form da turma) */
+.modal-overlay.on-top{z-index:70}
 .grid-turmas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
 .dias-row{display:flex;gap:5px;flex-wrap:wrap}
 .dia-chip{font-size:11px;font-weight:800;border-radius:8px;padding:4px 7px;background:#F1F5F4;color:var(--muted)}
@@ -465,8 +475,7 @@ body.authed #loginGate{display:none}
     <div class="tabs sub-tabs" role="tablist">
       <button class="tab active" data-subtab="alunos" role="tab">Alunos</button>
       <button class="tab" data-subtab="turmas" role="tab">Turmas</button>
-      <button class="tab" data-subtab="setores" role="tab">Setores</button>
-      <button class="tab" data-subtab="empresas" role="tab">Empresas</button>
+      <button class="tab" data-subtab="organizacao" role="tab">Empresas e setores</button>
     </div>
 
     <div id="cad-alunos">
@@ -484,20 +493,22 @@ body.authed #loginGate{display:none}
       <div class="grid-turmas" id="turmasList"></div>
     </div>
 
-    <div id="cad-setores" style="display:none">
-      <div class="card cad-toolbar">
-        <input class="m-search" id="setorSearch" placeholder="Buscar setor…">
-        <button class="btn primary" id="btnNovoSetor" style="margin-left:auto">+ Novo setor</button>
-      </div>
-      <div class="card" id="setoresList"></div>
-    </div>
+    <div id="cad-organizacao" style="display:none">
+      <p class="cad-hint">A <b>empresa</b> é o cliente (ex.: Contábil XYZ). O <b>setor</b> é o departamento dentro dela (ex.: Financeiro). Cada turma usa os dois.</p>
 
-    <div id="cad-empresas" style="display:none">
+      <h3 class="cad-block-title">🏢 Empresas</h3>
       <div class="card cad-toolbar">
         <input class="m-search" id="empresaSearch" placeholder="Buscar empresa…">
         <button class="btn primary" id="btnNovaEmpresa" style="margin-left:auto">+ Nova empresa</button>
       </div>
       <div class="card" id="empresasList"></div>
+
+      <h3 class="cad-block-title" style="margin-top:26px">🏷️ Setores</h3>
+      <div class="card cad-toolbar">
+        <input class="m-search" id="setorSearch" placeholder="Buscar setor…">
+        <button class="btn primary" id="btnNovoSetor" style="margin-left:auto">+ Novo setor</button>
+      </div>
+      <div class="card" id="setoresList"></div>
     </div>
   </section>
 
@@ -591,10 +602,16 @@ body.authed #loginGate{display:none}
       <div class="field"><label for="turmaModalidade">Modalidade</label><select id="turmaModalidade" required></select></div>
       <div class="field"><label for="turmaHorario">Horário</label><input type="time" id="turmaHorario" required></div>
       <div class="field"><label for="turmaEmpresa">Empresa</label>
-        <select id="turmaEmpresa" required></select>
+        <div class="field-row">
+          <select id="turmaEmpresa" required></select>
+          <button type="button" class="btn ghost btn-inline-add" id="btnAddEmpresaInline" title="Cadastrar nova empresa sem sair daqui">+ Nova</button>
+        </div>
       </div>
       <div class="field"><label for="turmaSetor">Setor</label>
-        <select id="turmaSetor" required></select>
+        <div class="field-row">
+          <select id="turmaSetor" required></select>
+          <button type="button" class="btn ghost btn-inline-add" id="btnAddSetorInline" title="Cadastrar novo setor sem sair daqui">+ Novo</button>
+        </div>
       </div>
       <div class="field"><label for="turmaCapacidade">Capacidade</label><input type="number" id="turmaCapacidade" min="1" value="20" required></div>
       <div class="field"><label>Dias da semana</label><div class="day-toggle" id="turmaDias"></div></div>
