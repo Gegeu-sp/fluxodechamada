@@ -107,8 +107,12 @@ function matchesFilters(c) {
 function filteredClasses() { return currentClasses.filter(matchesFilters); }
 
 export async function renderDashboard() {
-  await Promise.all([renderSectorChips(), renderEmpresaChips()]);
+  // Chips e aulas em paralelo; se os chips falharem (ex.: coleção ilegível),
+  // mantêm o estado atual ("Todos") e a grade de aulas renderiza mesmo assim.
+  const chipsP = Promise.all([renderSectorChips(), renderEmpresaChips()])
+    .catch(e => console.error('Filtros indisponíveis:', e));
   currentClasses = await getAulasDoDia(state.date);
+  await chipsP;
   const list = filteredClasses();
 
   // Os cartões de estatística sempre refletem só o dia selecionado, mesmo na visão Semana.

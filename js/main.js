@@ -61,7 +61,12 @@ async function onUser(user) {
     // seguintes até a busca de dados da anterior terminar, deixando uma
     // janela real em que a UI já aparece liberada mas os botões ainda não
     // respondem — encontrado via verificação automatizada, não hipotético.
-    await Promise.all([initPresenca(), initAnalise(), initCadastros()]);
+    // allSettled (não all): uma aba que falhe ao carregar dados não pode
+    // derrubar as outras duas — encontrado em produção quando as regras do
+    // Firestore ficaram uma versão atrás do código.
+    const inits = await Promise.allSettled([initPresenca(), initAnalise(), initCadastros()]);
+    inits.filter(r => r.status === 'rejected')
+      .forEach(r => showFatalError(r.reason && r.reason.message ? r.reason.message : r.reason));
   } else {
     await renderDashboard();
   }

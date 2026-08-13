@@ -31,8 +31,18 @@ export async function initCadastros() {
 }
 
 export async function refreshCadastros() {
+  // allSettled: uma coleção ilegível (ex.: regras do Firestore desatualizadas)
+  // não pode impedir as outras listas de renderizarem — o problema aparece
+  // como um aviso claro, não como uma aba inteira em branco.
+  const nomes = ['alunos', 'turmas', 'setores', 'empresas'];
+  const results = await Promise.allSettled([listAlunos(true), listTurmas(true), listSetores(true), listEmpresas(true)]);
   [alunosCache, turmasCache, setoresCache, empresasCache] =
-    await Promise.all([listAlunos(true), listTurmas(true), listSetores(true), listEmpresas(true)]);
+    results.map(r => r.status === 'fulfilled' ? r.value : []);
+  const falhas = nomes.filter((_, i) => results[i].status === 'rejected');
+  if (falhas.length) {
+    results.forEach((r, i) => { if (r.status === 'rejected') console.error(`Falha ao carregar ${nomes[i]}:`, r.reason); });
+    toast(`Não foi possível carregar: ${falhas.join(', ')} — confira as regras do banco`);
+  }
   renderAlunosList();
   renderTurmasList();
   renderSetoresList();
