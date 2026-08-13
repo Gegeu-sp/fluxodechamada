@@ -5,47 +5,33 @@ import {
   query, where, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ================== CACHE EM MEMÓRIA (turmas/alunos/setores) ==================
-// Turmas, alunos e setores mudam pouco durante uma sessão de uso; carregamos
-// uma vez e recarregamos só quando algo é criado/editado em Cadastros.
-let turmasCache = null;
-let alunosCache = null;
-let setoresCache = null;
-let empresasCache = null;
+// ================== CACHE EM MEMÓRIA (turmas/alunos/setores/empresas) ==================
+// Essas coleções mudam pouco durante uma sessão de uso; carregamos uma vez e
+// recarregamos só quando algo é criado/editado em Cadastros. O cache guarda a
+// *promessa* da busca, não o resultado: assim, chamadas simultâneas na
+// inicialização (as três abas iniciam em paralelo) compartilham uma única
+// requisição ao Firestore em vez de dispararem buscas duplicadas.
+const listCache = {};
 
-export async function listTurmas(force = false) {
-  if (turmasCache && !force) return turmasCache;
-  const snap = await getDocs(collection(db, 'turmas'));
-  turmasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  return turmasCache;
+function listCollection(name, force) {
+  if (!listCache[name] || force) {
+    const p = getDocs(collection(db, name))
+      .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    listCache[name] = p;
+    // Erro não fica cacheado: a próxima chamada tenta de novo. Só limpa se a
+    // entrada ainda for esta promessa — outra busca pode tê-la substituído.
+    p.catch(() => { if (listCache[name] === p) delete listCache[name]; });
+  }
+  return listCache[name];
 }
 
-export async function listAlunos(force = false) {
-  if (alunosCache && !force) return alunosCache;
-  const snap = await getDocs(collection(db, 'alunos'));
-  alunosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  return alunosCache;
-}
-
-export async function listSetores(force = false) {
-  if (setoresCache && !force) return setoresCache;
-  const snap = await getDocs(collection(db, 'setores'));
-  setoresCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  return setoresCache;
-}
-
-export async function listEmpresas(force = false) {
-  if (empresasCache && !force) return empresasCache;
-  const snap = await getDocs(collection(db, 'empresas'));
-  empresasCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  return empresasCache;
-}
+export const listTurmas = (force = false) => listCollection('turmas', force);
+export const listAlunos = (force = false) => listCollection('alunos', force);
+export const listSetores = (force = false) => listCollection('setores', force);
+export const listEmpresas = (force = false) => listCollection('empresas', force);
 
 function invalidateCache() {
-  turmasCache = null;
-  alunosCache = null;
-  setoresCache = null;
-  empresasCache = null;
+  Object.keys(listCache).forEach(k => delete listCache[k]);
 }
 
 // ================== ALUNOS ==================
@@ -125,7 +111,15 @@ export async function getAulasDoDia(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dow = new Date(y, m - 1, d).getDay();
 
-  const [turmas, alunos, setores, empresas] = await Promise.all([listTurmas(), listAlunos(), listSetores(), listEmpresas()]);
+  // Setores/empresas são decorativos aqui (só resolvem nomes) — se a leitura
+  // deles falhar (ex.: regras do Firestore desatualizadas no projeto real),
+  // as aulas do dia ainda renderizam, com o id bruto/'—' no lugar do nome.
+  const [turmas, alunos, setores, empresas] = await Promise.all([
+    listTurmas(),
+    listAlunos(),
+    listSetores().catch(e => { console.error('Setores indisponíveis:', e); return []; }),
+    listEmpresas().catch(e => { console.error('Empresas indisponíveis:', e); return []; }),
+  ]);
   const alunosMap = new Map(alunos.map(a => [a.id, a]));
   const setoresMap = new Map(setores.map(s => [s.id, s]));
   const empresasMap = new Map(empresas.map(e => [e.id, e]));

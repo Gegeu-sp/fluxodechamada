@@ -122,7 +122,9 @@ function donutLabelFn(d) { return function (c) { const x = d.donut[c.dataIndex];
 function donutAfterFn(d) { return function (c) { const x = d.donut[c.dataIndex]; return ` Ocupação: ${x.cp ? Math.round(x.p / x.cp * 100) : 0}%`; }; }
 
 export async function renderCharts() {
-  await Promise.all([renderSectorChips(), renderEmpresaChips()]);
+  // Falha nos chips (coleção ilegível) não pode impedir os KPIs/gráficos.
+  await Promise.all([renderSectorChips(), renderEmpresaChips()])
+    .catch(e => console.error('Filtros indisponíveis:', e));
   const d = await analyticsData();
 
   countUp($('kTotal'), d.totalCur);
